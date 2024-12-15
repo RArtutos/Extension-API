@@ -20,9 +20,27 @@ export const ui = {
         </div>
       `;
     }).join('');
+
+    // Agregar event listeners a los botones después de actualizar el HTML
+    this.attachSwitchButtonListeners();
+  },
+
+  attachSwitchButtonListeners() {
+    document.querySelectorAll('.switch-btn').forEach(button => {
+      button.addEventListener('click', async (e) => {
+        const account = JSON.parse(e.target.dataset.account);
+        // Importamos dinámicamente para evitar dependencias circulares
+        const { accountManager } = await import('./accountManager.js');
+        accountManager.switchAccount(account);
+      });
+    });
   },
 
   showError(message) {
+    alert(message);
+  },
+
+  showSuccess(message) {
     alert(message);
   }
 };
