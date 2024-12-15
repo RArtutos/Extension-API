@@ -9,9 +9,10 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Cookie Manager API")
 
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=["*"],  # Permitir todos los orígenes en desarrollo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -6,10 +6,12 @@ services:
     ports:
       - "80:3000"
     environment:
-      - VITE_API_URL=http://84.46.249.121:8000
+      - VITE_API_URL=http://api:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    depends_on:
+      - api
 
   api:
     build: ./backend
@@ -17,8 +19,10 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/cookiemanager
-      - SECRET_KEY=your-secret-key-here
-      - FRONTEND_URL=http://84.46.249.121
+      - SECRET_KEY=artutos123
+      - FRONTEND_URL=http://frontend:3000
+      - DEFAULT_USER_EMAIL=admin@artutos.eu.org
+      - DEFAULT_USER_PASSWORD=artutos123
     volumes:
       - ./backend:/app
     depends_on:

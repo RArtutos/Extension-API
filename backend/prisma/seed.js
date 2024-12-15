@@ -5,21 +5,21 @@ const prisma = new PrismaClient();
 
 async function main() {
   try {
-    // Create admin user
-    const hashedPassword = await hashPassword('admin');
+    // Crear usuario por defecto
+    const hashedPassword = await hashPassword('artutos123');
     
     await prisma.user.upsert({
-      where: { email: 'admin' },
+      where: { email: 'admin@artutos.eu.org' },
       update: {},
       create: {
-        email: 'admin',
+        email: 'admin@artutos.eu.org',
         password: hashedPassword,
       },
     });
 
-    console.log('Database seeded successfully');
+    console.log('Base de datos sembrada exitosamente');
   } catch (error) {
-    console.error('Seeding error:', error);
+    console.error('Error al sembrar la base de datos:', error);
     throw error;
   }
 }
