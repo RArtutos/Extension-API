@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  profiles  Profile[]
+  folders   Folder[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Profile {
+  id        Int      @id @default(autoincrement())
+  name      String
+  cookies   Cookie[]
+  proxy     Proxy?   @relation(fields: [proxyId], references: [id])
+  proxyId   Int?
+  folder    Folder?  @relation(fields: [folderId], references: [id])
+  folderId  Int?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Cookie {
+  id        Int      @id @default(autoincrement())
+  domain    String
+  name      String
+  value     String
+  path      String   @default("/")
+  profile   Profile  @relation(fields: [profileId], references: [id])
+  profileId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Proxy {
+  id        Int       @id @default(autoincrement())
+  host      String
+  port      Int
+  username  String?
+  password  String?
+  profiles  Profile[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Folder {
+  id        Int       @id @default(autoincrement())
+  name      String
+  profiles  Profile[]
+  user      User      @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
