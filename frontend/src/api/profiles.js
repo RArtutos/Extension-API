@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAuthHeader } from '../utils/auth';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://84.46.249.121:3000/api';
 
 export const getProfiles = async () => {
   const response = await axios.get(`${API_URL}/profiles`, {

@@ -1,9 +1,14 @@
-const jwt = require('jsonwebtoken');
+import { verifyToken } from '../utils/auth.js';
 
-module.exports = (req, res, next) => {
+export const auth = (req, res, next) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = verifyToken(token);
     req.user = decoded;
     next();
   } catch (error) {

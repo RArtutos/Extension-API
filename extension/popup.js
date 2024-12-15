@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = document.getElementById('password').value;
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch('http://84.46.249.121:3000/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.get(['token'], result => resolve(result.token));
       });
 
-      const response = await fetch('http://localhost:3000/api/profiles', {
+      const response = await fetch('http://84.46.249.121:3000/api/profiles', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

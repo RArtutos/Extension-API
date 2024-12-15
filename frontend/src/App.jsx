@@ -14,7 +14,7 @@ import Settings from './pages/Settings';
 
 const queryClient = new QueryClient();
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>

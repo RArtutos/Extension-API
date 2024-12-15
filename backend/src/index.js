@@ -1,17 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const { PrismaClient } = require('@prisma/client');
-const authRoutes = require('./routes/auth');
-const cookieRoutes = require('./routes/cookies');
-const proxyRoutes = require('./routes/proxies');
+import express from 'express';
+import configureServer from './config/server.js';
+import authRoutes from './routes/auth.js';
+import cookieRoutes from './routes/cookies.js';
+import proxyRoutes from './routes/proxies.js';
 
-const prisma = new PrismaClient();
 const app = express();
-
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
+configureServer(app);
 
 // Routes
 app.use('/api/auth', authRoutes);

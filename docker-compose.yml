@@ -1,36 +1,29 @@
 version: '3.8'
 
 services:
-  # Frontend Service
   frontend:
     build: ./frontend
     ports:
       - "80:3000"
     environment:
-      - VITE_API_URL=http://api:3000
+      - VITE_API_URL=http://84.46.249.121:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    depends_on:
-      - api
 
-  # Backend API Service
   api:
     build: ./backend
     ports:
-      - "3000:3000"
+      - "8000:8000"
     environment:
-      - NODE_ENV=development
       - DATABASE_URL=postgresql://user:password@db:5432/cookiemanager
-      - JWT_SECRET=your-secret-key-here
-      - CORS_ORIGIN=http://localhost
+      - SECRET_KEY=your-secret-key-here
+      - FRONTEND_URL=http://84.46.249.121
     volumes:
       - ./backend:/app
-      - /app/node_modules
     depends_on:
       - db
 
-  # Database Service
   db:
     image: postgres:14-alpine
     ports:
@@ -40,16 +33,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=cookiemanager
     volumes:
-      - postgres_data:/data/postgres
-
-  # Redis for Session Management
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:
-  redis_data:
