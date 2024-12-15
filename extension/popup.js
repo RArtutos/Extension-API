@@ -8,6 +8,7 @@ const accountManager = document.getElementById('account-manager');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const useProxyCheckbox = document.getElementById('use-proxy');
+const accountsList = document.getElementById('accounts-list');
 
 // Verificar estado de autenticación al cargar
 chrome.storage.local.get(['token'], function(result) {
@@ -69,43 +70,6 @@ function showAccountManager() {
   accountManager.classList.remove('hidden');
 }
 
-async function loadAccounts() {
-  try {
-    const token = await new Promise(resolve => {
-      chrome.storage.local.get(['token'], result => resolve(result.token));
-    });
-
-    const response = await fetch('http://84.46.249.121:8000/api/accounts', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    const accounts = await response.json();
-    const accountsList = document.getElementById('accounts-list');
-    accountsList.innerHTML = accounts.map(account => `
-      <div class="account-item">
-        <span>${account.name}</span>
-        <button onclick="switchAccount(${JSON.stringify(account).replace(/"/g, '&quot;')})">Switch</button>
-      </div>
-    `).join('');
-
-    // Cargar cuenta actual
-    chrome.storage.local.get(['currentAccount'], result => {
-      currentAccount = result.currentAccount;
-      if (currentAccount) {
-        document.querySelectorAll('.account-item').forEach(item => {
-          if (item.querySelector('span').textContent === currentAccount.name) {
-            item.classList.add('active');
-          }
-        });
-      }
-    });
-  } catch (error) {
-    console.error('Failed to load accounts:', error);
-  }
-}
-
 async function switchAccount(account) {
   try {
     currentAccount = account;
@@ -145,15 +109,62 @@ async function switchAccount(account) {
     }
 
     // Actualizar UI
-    document.querySelectorAll('.account-item').forEach(item => {
-      item.classList.remove('active');
-      if (item.querySelector('span').textContent === account.name) {
-        item.classList.add('active');
-      }
-    });
+    updateAccountsListUI();
 
   } catch (error) {
     console.error('Error switching account:', error);
     alert('Error switching account. Check permissions and try again.');
   }
+}
+
+async function loadAccounts() {
+  try {
+    const token = await new Promise(resolve => {
+      chrome.storage.local.get(['token'], result => resolve(result.token));
+    });
+
+    const response = await fetch('http://84.46.249.121:8000/api/accounts', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const accounts = await response.json();
+    updateAccountsListUI(accounts);
+
+    // Cargar cuenta actual
+    chrome.storage.local.get(['currentAccount'], result => {
+      currentAccount = result.currentAccount;
+      if (currentAccount) {
+        updateAccountsListUI(accounts);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to load accounts:', error);
+  }
+}
+
+function updateAccountsListUI(accounts) {
+  accountsList.innerHTML = accounts.map(account => {
+    const isActive = currentAccount && currentAccount.name === account.name;
+    return `
+      <div class="account-item ${isActive ? 'active' : ''}">
+        <span>${account.name}</span>
+        <button class="switch-btn" data-account='${JSON.stringify(account)}'>Switch</button>
+      </div>
+    `;
+  }).join('');
+
+  // Agregar event listeners a los botones
+  document.querySelectorAll('.switch-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const account = JSON.parse(e.target.dataset.account);
+      switchAccount(account);
+    });
+  });
+}
+
+async function updateProxy() {
+  // Implementar la lógica del proxy aquí si es necesario
+  console.log('Updating proxy settings...');
 }

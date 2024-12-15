@@ -4,15 +4,20 @@
   "version": "1.0.0",
   "description": "Manage accounts and cookies",
   "permissions": [
-    "cookies",
     "storage",
-    "proxy",
-    "webRequest",
+    "proxy"
+  ],
+  "optional_permissions": [
+    "cookies",
     "tabs"
   ],
-  "host_permissions": [
+  "host_permissions": [],
+  "optional_host_permissions": [
     "<all_urls>"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "action": {
     "default_popup": "popup.html"
   },
