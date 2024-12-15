@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class Cookie(BaseModel):
@@ -10,7 +10,7 @@ class Cookie(BaseModel):
 class AccountBase(BaseModel):
     name: str
     group: Optional[str] = None
-    cookies: List[Cookie] = []
+    cookies: List[Cookie] = Field(default_factory=list)
 
 class AccountCreate(AccountBase):
     pass

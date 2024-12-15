@@ -21,7 +21,15 @@
                     <div class="mb-3">
                         {{ form.cookies.label(class="form-label") }}
                         {{ form.cookies(class="form-control", rows=5) }}
-                        <small class="text-muted">Enter cookies in JSON format</small>
+                        <small class="text-muted">Enter cookies in JSON format, example:<br>
+                        [<br>
+                        &nbsp;&nbsp;{<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"domain": "example.com",<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"name": "sessionid",<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"value": "abc123",<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"path": "/"<br>
+                        &nbsp;&nbsp;}<br>
+                        ]</small>
                     </div>
                     <button type="submit" class="btn btn-primary">Save</button>
                     <a href="{{ url_for('accounts.list') }}" class="btn btn-secondary">Cancel</a>

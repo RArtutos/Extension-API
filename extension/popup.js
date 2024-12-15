@@ -46,7 +46,7 @@ loginBtn.addEventListener('click', async () => {
 });
 
 logoutBtn.addEventListener('click', () => {
-  chrome.storage.local.remove(['token'], function() {
+  chrome.storage.local.remove(['token', 'currentAccount'], function() {
     showLoginForm();
   });
 });
@@ -86,30 +86,40 @@ async function loadAccounts() {
     accountsList.innerHTML = accounts.map(account => `
       <div class="account-item">
         <span>${account.name}</span>
-        <button onclick="switchAccount(${account.id})">Switch</button>
+        <button onclick="switchAccount(${JSON.stringify(account).replace(/"/g, '&quot;')})">Switch</button>
       </div>
     `).join('');
+
+    // Cargar cuenta actual
+    chrome.storage.local.get(['currentAccount'], result => {
+      currentAccount = result.currentAccount;
+      if (currentAccount) {
+        document.querySelectorAll('.account-item').forEach(item => {
+          if (item.querySelector('span').textContent === currentAccount.name) {
+            item.classList.add('active');
+          }
+        });
+      }
+    });
   } catch (error) {
     console.error('Failed to load accounts:', error);
   }
 }
 
-async function switchAccount(accountId) {
+async function switchAccount(account) {
   try {
-    const token = await new Promise(resolve => {
-      chrome.storage.local.get(['token'], result => resolve(result.token));
-    });
-
-    const response = await fetch(`http://84.46.249.121:8000/api/accounts/${accountId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    const account = await response.json();
     currentAccount = account;
+    chrome.storage.local.set({ currentAccount: account });
 
-    // Aplicar cookies
+    // Primero eliminar todas las cookies existentes de los dominios relevantes
+    for (const cookie of account.cookies) {
+      await chrome.cookies.remove({
+        url: `https://${cookie.domain}`,
+        name: cookie.name,
+      });
+    }
+
+    // Luego establecer las nuevas cookies
     for (const cookie of account.cookies) {
       await chrome.cookies.set({
         url: `https://${cookie.domain}`,
@@ -117,64 +127,33 @@ async function switchAccount(accountId) {
         value: cookie.value,
         path: cookie.path,
         domain: cookie.domain,
+        secure: true,
+        sameSite: 'no_restriction'
       });
     }
 
     // Actualizar proxy si está habilitado
     if (proxyEnabled) {
-      updateProxy();
+      await updateProxy();
     }
-  } catch (error) {
-    console.error('Failed to switch account:', error);
-  }
-}
 
-async function updateProxy() {
-  if (!currentAccount || !proxyEnabled) {
-    // Deshabilitar proxy
-    await chrome.proxy.settings.clear({
-      scope: 'regular',
-    });
-    return;
-  }
+    // Obtener el primer dominio para abrir
+    if (account.cookies && account.cookies.length > 0) {
+      const firstDomain = account.cookies[0].domain;
+      // Abrir el dominio en una nueva pestaña
+      chrome.tabs.create({ url: `https://${firstDomain}` });
+    }
 
-  try {
-    const token = await new Promise(resolve => {
-      chrome.storage.local.get(['token'], result => resolve(result.token));
-    });
-
-    const response = await fetch('http://84.46.249.121:8000/api/proxies', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    const proxies = await response.json();
-    if (proxies.length > 0) {
-      const proxy = proxies[0]; // Usar el primer proxy disponible
-      
-      const config = {
-        mode: "fixed_servers",
-        rules: {
-          singleProxy: {
-            scheme: proxy.type,
-            host: proxy.host,
-            port: proxy.port,
-          },
-        },
-      };
-
-      if (proxy.username && proxy.password) {
-        config.rules.singleProxy.username = proxy.username;
-        config.rules.singleProxy.password = proxy.password;
+    // Actualizar UI
+    document.querySelectorAll('.account-item').forEach(item => {
+      item.classList.remove('active');
+      if (item.querySelector('span').textContent === account.name) {
+        item.classList.add('active');
       }
+    });
 
-      await chrome.proxy.settings.set({
-        value: config,
-        scope: 'regular',
-      });
-    }
   } catch (error) {
-    console.error('Failed to update proxy:', error);
+    console.error('Error switching account:', error);
+    alert('Error switching account. Check permissions and try again.');
   }
 }

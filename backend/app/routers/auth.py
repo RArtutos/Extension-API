@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from ..core.security import verify_password, create_access_token, get_password_hash
+from ..core.auth import verify_password, create_access_token, get_password_hash
 from ..core.config import settings
 from ..db.database import Database
 

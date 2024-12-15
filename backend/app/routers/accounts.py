@@ -13,6 +13,14 @@ async def get_accounts(token: str = Depends(oauth2_scheme)):
 
 @router.post("/", response_model=Account)
 async def create_account(account: AccountCreate, token: str = Depends(oauth2_scheme)):
+    # Validate cookies format
+    for cookie in account.cookies:
+        if not cookie.domain or not cookie.name or not cookie.value:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid cookie format. Required fields: domain, name, value"
+            )
+    
     return db.create_account(account.dict())
 
 @router.delete("/{account_id}")

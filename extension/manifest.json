@@ -7,7 +7,8 @@
     "cookies",
     "storage",
     "proxy",
-    "webRequest"
+    "webRequest",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"

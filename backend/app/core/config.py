@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
+from .auth import get_password_hash
 
 class Settings(BaseSettings):
     SECRET_KEY: str = "artutos123"
@@ -19,7 +20,7 @@ class Settings(BaseSettings):
                 "users": [
                     {
                         "email": self.ADMIN_EMAIL,
-                        "password": self.ADMIN_PASSWORD,
+                        "password": get_password_hash(self.ADMIN_PASSWORD),
                         "is_admin": True
                     }
                 ],
