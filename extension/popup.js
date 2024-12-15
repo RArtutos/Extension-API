@@ -40,9 +40,12 @@ loginBtn.addEventListener('click', async () => {
         showAccountManager();
         loadAccounts();
       });
+    } else {
+      throw new Error('Invalid credentials');
     }
   } catch (error) {
     console.error('Login failed:', error);
+    alert('Login failed. Please check your credentials and try again.');
   }
 });
 
@@ -70,53 +73,6 @@ function showAccountManager() {
   accountManager.classList.remove('hidden');
 }
 
-async function switchAccount(account) {
-  try {
-    currentAccount = account;
-    chrome.storage.local.set({ currentAccount: account });
-
-    // Primero eliminar todas las cookies existentes de los dominios relevantes
-    for (const cookie of account.cookies) {
-      await chrome.cookies.remove({
-        url: `https://${cookie.domain}`,
-        name: cookie.name,
-      });
-    }
-
-    // Luego establecer las nuevas cookies
-    for (const cookie of account.cookies) {
-      await chrome.cookies.set({
-        url: `https://${cookie.domain}`,
-        name: cookie.name,
-        value: cookie.value,
-        path: cookie.path,
-        domain: cookie.domain,
-        secure: true,
-        sameSite: 'no_restriction'
-      });
-    }
-
-    // Actualizar proxy si está habilitado
-    if (proxyEnabled) {
-      await updateProxy();
-    }
-
-    // Obtener el primer dominio para abrir
-    if (account.cookies && account.cookies.length > 0) {
-      const firstDomain = account.cookies[0].domain;
-      // Abrir el dominio en una nueva pestaña
-      chrome.tabs.create({ url: `https://${firstDomain}` });
-    }
-
-    // Actualizar UI
-    updateAccountsListUI();
-
-  } catch (error) {
-    console.error('Error switching account:', error);
-    alert('Error switching account. Check permissions and try again.');
-  }
-}
-
 async function loadAccounts() {
   try {
     const token = await new Promise(resolve => {
@@ -141,6 +97,87 @@ async function loadAccounts() {
     });
   } catch (error) {
     console.error('Failed to load accounts:', error);
+    alert('Failed to load accounts. Please try again.');
+  }
+}
+
+async function switchAccount(account) {
+  try {
+    currentAccount = account;
+    chrome.storage.local.set({ currentAccount: account });
+
+    // Process cookies
+    for (const cookie of account.cookies) {
+      const domain = cookie.domain;
+      
+      // First remove existing cookies
+      const existingCookies = await chrome.cookies.getAll({ domain });
+      for (const existing of existingCookies) {
+        await chrome.cookies.remove({
+          url: `https://${domain}`,
+          name: existing.name
+        });
+      }
+
+      // Process header string cookies
+      if (cookie.name === 'header_cookies') {
+        const cookieString = cookie.value;
+        const cookiePairs = cookieString.split(';');
+        
+        for (const pair of cookiePairs) {
+          const trimmedPair = pair.trim();
+          if (!trimmedPair) continue;
+
+          const firstEquals = trimmedPair.indexOf('=');
+          if (firstEquals === -1) continue;
+
+          const name = trimmedPair.substring(0, firstEquals).trim();
+          const value = trimmedPair.substring(firstEquals + 1).trim();
+
+          if (!name || !value) continue;
+
+          try {
+            await chrome.cookies.set({
+              url: `https://${domain}`,
+              domain: domain,
+              name: name,
+              value: value,
+              path: '/',
+              secure: true,
+              sameSite: 'no_restriction'
+            });
+          } catch (error) {
+            console.error(`Error setting cookie ${name}:`, error);
+          }
+        }
+      }
+    }
+
+    // Open first page
+    if (account.cookies && account.cookies.length > 0) {
+      const firstDomain = account.cookies[0].domain;
+      const url = `https://${firstDomain.replace(/^\./, '')}`;
+      chrome.tabs.create({ url });
+    }
+
+    // Update UI
+    const token = await new Promise(resolve => {
+      chrome.storage.local.get(['token'], result => resolve(result.token));
+    });
+    
+    const response = await fetch('http://84.46.249.121:8000/api/accounts', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    const accounts = await response.json();
+    updateAccountsListUI(accounts);
+
+    alert('Account switched successfully');
+  } catch (error) {
+    console.error('Error switching account:', error);
+    alert('Error switching account: ' + error.message);
   }
 }
 
@@ -165,6 +202,5 @@ function updateAccountsListUI(accounts) {
 }
 
 async function updateProxy() {
-  // Implementar la lógica del proxy aquí si es necesario
   console.log('Updating proxy settings...');
 }

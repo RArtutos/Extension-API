@@ -1,12 +1,9 @@
-```javascript
-import { cookieManager } from './cookies.js';
-import { storage } from './storage.js';
-import { api } from './api.js';
-import { ui } from './ui.js';
+import { storage } from './utils/storage.js';
+import { accountService } from './services/accountService.js';
+import { ui } from './utils/ui.js';
 
 class AccountManager {
   constructor() {
-    this.currentAccount = null;
     this.proxyEnabled = false;
   }
 
@@ -22,10 +19,9 @@ class AccountManager {
 
   async loadAccounts() {
     try {
-      const token = await storage.get('token');
-      const accounts = await api.getAccounts(token);
-      this.currentAccount = await storage.get('currentAccount');
-      ui.updateAccountsList(accounts, this.currentAccount);
+      const accounts = await accountService.loadAccounts();
+      const currentAccount = await accountService.getCurrentAccount();
+      ui.updateAccountsList(accounts, currentAccount);
     } catch (error) {
       console.error('Failed to load accounts:', error);
       ui.showError('Error al cargar las cuentas. Por favor, intenta de nuevo.');
@@ -34,81 +30,19 @@ class AccountManager {
 
   async switchAccount(account) {
     try {
-      console.log('Switching to account:', account); // Debug
+      console.log('Switching to account:', account);
 
-      const granted = await cookieManager.requestPermissions();
-      if (!granted) {
-        throw new Error('No se otorgaron los permisos necesarios');
+      await accountService.switchAccount(account);
+
+      // Open first page if available
+      const firstDomain = accountService.getFirstDomain(account);
+      if (firstDomain) {
+        chrome.tabs.create({ url: `https://${firstDomain}` });
       }
 
-      this.currentAccount = account;
-      await storage.set('currentAccount', account);
-
-      // Procesar cookies
-      for (const cookie of account.cookies) {
-        console.log('Processing cookie:', cookie); // Debug
-        
-        const domain = cookie.domain;
-        
-        // Primero eliminamos las cookies existentes
-        const existingCookies = await chrome.cookies.getAll({ domain });
-        console.log('Existing cookies:', existingCookies); // Debug
-        
-        for (const existing of existingCookies) {
-          await chrome.cookies.remove({
-            url: `https://${domain}`,
-            name: existing.name
-          });
-        }
-
-        // Procesar el header string de cookies
-        if (cookie.name === 'header_cookies') {
-          const cookieString = cookie.value;
-          console.log('Cookie string to process:', cookieString); // Debug
-          
-          const cookiePairs = cookieString.split(';');
-          for (const pair of cookiePairs) {
-            const trimmedPair = pair.trim();
-            if (!trimmedPair) continue;
-
-            const firstEquals = trimmedPair.indexOf('=');
-            if (firstEquals === -1) continue;
-
-            const name = trimmedPair.substring(0, firstEquals).trim();
-            const value = trimmedPair.substring(firstEquals + 1).trim();
-
-            if (!name || !value) continue;
-
-            console.log('Setting cookie:', { name, value, domain }); // Debug
-
-            try {
-              await chrome.cookies.set({
-                url: `https://${domain}`,
-                domain: domain,
-                name: name,
-                value: value,
-                path: '/',
-                secure: true,
-                sameSite: 'no_restriction'
-              });
-            } catch (error) {
-              console.error(`Error setting cookie ${name}:`, error);
-            }
-          }
-        }
-      }
-
-      // Abrir primera página
-      if (account.cookies && account.cookies.length > 0) {
-        const firstDomain = account.cookies[0].domain;
-        const url = `https://${firstDomain.replace(/^\./, '')}`;
-        console.log('Opening URL:', url); // Debug
-        chrome.tabs.create({ url });
-      }
-
-      // Actualizar UI
-      const accounts = await api.getAccounts(await storage.get('token'));
-      ui.updateAccountsList(accounts, this.currentAccount);
+      // Update UI
+      const accounts = await accountService.loadAccounts();
+      ui.updateAccountsList(accounts, account);
 
       ui.showSuccess('Cuenta cambiada exitosamente');
     } catch (error) {
@@ -123,11 +57,10 @@ class AccountManager {
 
   setProxyEnabled(enabled) {
     this.proxyEnabled = enabled;
-    if (this.currentAccount) {
+    if (accountService.getCurrentAccount()) {
       this.updateProxy();
     }
   }
 }
 
 export const accountManager = new AccountManager();
-```
