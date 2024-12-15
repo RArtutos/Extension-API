@@ -1,14 +1,14 @@
 from flask import Flask
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 from .config import Config
 from .models.user import User
 
 login_manager = LoginManager()
+csrf = CSRFProtect()
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Como estamos usando el email como ID, simplemente devolvemos un nuevo objeto User
-    # En una aplicación real, aquí buscaríamos el usuario en la base de datos
     return User(email=user_id, token=None)
 
 def create_app():
@@ -16,6 +16,7 @@ def create_app():
     app.config.from_object(Config)
     
     login_manager.init_app(app)
+    csrf.init_app(app)
     login_manager.login_view = 'auth.login'
     
     from .routes import auth, accounts, proxies
