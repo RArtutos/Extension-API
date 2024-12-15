@@ -25,3 +25,6 @@ services:
       - ADMIN_EMAIL=admin@artutos.eu.org
       - ADMIN_PASSWORD=artutos123
       - DATA_FILE=/app/data/db.json
+
+volumes:
+  data:
