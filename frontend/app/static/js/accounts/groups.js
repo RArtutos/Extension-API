@@ -38,32 +38,14 @@ export class AccountGroupManager {
 
     async createGroup(formData) {
         try {
-            const response = await fetch('/api/groups/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.csrfToken
-                },
-                body: JSON.stringify({
-                    name: formData.get('name'),
-                    description: formData.get('description')
-                })
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to create group');
-            }
-
-            // Close modal and reload page
-            const modal = document.getElementById('create-group-modal');
-            const bootstrapModal = bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-            
-            window.location.reload();
+            // Submit the form directly to the server-side endpoint
+            const form = document.getElementById('create-group-form');
+            form.action = '/groups/create';
+            form.method = 'POST';
+            form.submit();
         } catch (error) {
             console.error('Error creating group:', error);
-            alert(error.message || 'Failed to create group. Please try again.');
+            alert('Failed to create group. Please try again.');
         }
     }
 
@@ -72,7 +54,7 @@ export class AccountGroupManager {
         const groupId = event.target.dataset.groupId;
 
         try {
-            const response = await fetch(`/api/groups/${groupId}/accounts/${accountId}`, {
+            const response = await fetch(`/groups/api/${groupId}/accounts/${accountId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
