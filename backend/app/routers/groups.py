@@ -9,10 +9,13 @@ group_repo = GroupRepository()
 
 @router.get("/", response_model=List[GroupWithAccounts])
 async def get_groups(current_user: dict = Depends(get_current_admin_user)):
-    groups = group_repo.get_all()
-    for group in groups:
-        group["accounts"] = group_repo.get_accounts_by_group(group["id"])
-    return groups
+    try:
+        groups = group_repo.get_all()
+        for group in groups:
+            group["accounts"] = group_repo.get_accounts_by_group(group["id"])
+        return groups
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", response_model=Group)
 async def create_group(group: GroupCreate, current_user: dict = Depends(get_current_admin_user)):
@@ -35,3 +38,16 @@ async def get_group(group_id: int, current_user: dict = Depends(get_current_admi
         raise HTTPException(status_code=404, detail="Group not found")
     group["accounts"] = group_repo.get_accounts_by_group(group_id)
     return group
+
+@router.post("/{group_id}/accounts/{account_id}")
+async def assign_account_to_group(
+    group_id: int,
+    account_id: int,
+    current_user: dict = Depends(get_current_admin_user)
+):
+    try:
+        if group_repo.assign_account(group_id, account_id):
+            return {"message": "Account assigned to group successfully"}
+        raise HTTPException(status_code=400, detail="Failed to assign account to group")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
