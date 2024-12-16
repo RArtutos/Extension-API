@@ -4,45 +4,87 @@
 <div class="container">
     <h2 class="mb-4">Analytics Dashboard</h2>
     
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Sessions</h5>
+                    <h2 class="card-text">{{ analytics.total_sessions }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Active Accounts</h5>
+                    <h2 class="card-text">{{ analytics.active_accounts }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Active Users</h5>
+                    <h2 class="card-text">{{ analytics.active_users }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="row">
+        <!-- Sessions Chart -->
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
                     Active Sessions by Account
                 </div>
                 <div class="card-body">
-                    <canvas id="sessionsChart"></canvas>
+                    <canvas id="sessions-chart"></canvas>
                 </div>
             </div>
         </div>
         
+        <!-- Activity Chart -->
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
-                    User Activity
+                    Hourly Activity
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Account</th>
-                                    <th>Last Activity</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for activity in analytics.recent_activity %}
-                                <tr>
-                                    <td>{{ activity.user_id }}</td>
-                                    <td>{{ activity.account_id }}</td>
-                                    <td>{{ activity.timestamp }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <canvas id="activity-chart"></canvas>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity Table -->
+    <div class="card">
+        <div class="card-header">
+            Recent Activity
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="activity-table" class="table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Account</th>
+                            <th>Domain</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in analytics.recent_activity %}
+                        <tr>
+                            <td>{{ activity.user_id }}</td>
+                            <td>{{ activity.account_id }}</td>
+                            <td>{{ activity.domain }}</td>
+                            <td>{{ activity.timestamp|format_datetime }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -51,29 +93,20 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('sessionsChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ analytics.accounts|map(attribute='name')|list|tojson }},
-            datasets: [{
-                label: 'Active Sessions',
-                data: {{ analytics.accounts|map(attribute='active_sessions')|list|tojson }},
-                backgroundColor: 'rgba(54, 162, 235, 0.5)'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    stepSize: 1
-                }
-            }
-        }
+<script type="module">
+    import { AnalyticsDashboard } from '/static/js/analytics/dashboard.js';
+    
+    const dashboard = new AnalyticsDashboard();
+    dashboard.init();
+    
+    // Initialize with current data
+    const initialData = {{ analytics|tojson|safe }};
+    dashboard.updateSessionsChart(initialData.accounts);
+    dashboard.updateActivityChart(initialData.hourly_activity);
+    
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        dashboard.cleanup();
     });
-});
 </script>
 {% endblock %}

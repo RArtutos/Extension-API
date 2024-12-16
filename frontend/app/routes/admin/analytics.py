@@ -12,3 +12,10 @@ admin_service = AdminService()
 def analytics():
     analytics_data = admin_service.get_analytics()
     return render_template('admin/analytics.html', analytics=analytics_data)
+
+# Add template filter for datetime formatting
+@admin.bp.app_template_filter('format_datetime')
+def format_datetime(timestamp):
+    from datetime import datetime
+    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
