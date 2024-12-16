@@ -1,26 +1,22 @@
 """Base service class for API interactions"""
 from typing import Optional, Dict, Any
 import requests
-from flask import current_app
+from flask import current_app, session
+from ..core.session import SessionManager
 from ..config import Config
 
 class BaseService:
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
-        self.base_url = Config.API_URL  # Use Config directly instead of current_app
+        self.base_url = Config.API_URL
 
     def _get_headers(self) -> Dict[str, str]:
         """Get request headers with authentication"""
         headers = {'Content-Type': 'application/json'}
-        token = self._get_auth_token()
+        token = SessionManager.get_stored_token()
         if token:
             headers['Authorization'] = f'Bearer {token}'
         return headers
-
-    def _get_auth_token(self) -> Optional[str]:
-        """Get authentication token from session"""
-        from flask import session
-        return session.get('token')
 
     def _handle_request(self, method: str, endpoint: str, data: Dict = None, params: Dict = None) -> Any:
         """Handle API request with error handling"""
@@ -45,4 +41,7 @@ class BaseService:
         except requests.exceptions.RequestException as e:
             if current_app:
                 current_app.logger.error(f"API request failed: {str(e)}")
+            if e.response and e.response.status_code == 401:
+                # Clear session on unauthorized
+                SessionManager.clear_session()
             raise

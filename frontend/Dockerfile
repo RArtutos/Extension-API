@@ -7,4 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "run.py"]
+# Add gunicorn to requirements
+RUN pip install gunicorn
+
+# Use gunicorn in production
+CMD ["gunicorn", "--bind", "0.0.0.0:31000", "run:app"]
