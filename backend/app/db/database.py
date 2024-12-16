@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 from ..core.config import settings
+from ..core.auth import get_password_hash
 
 class Database:
     def __init__(self):
@@ -31,7 +32,7 @@ class Database:
         data = self._read_data()
         user = {
             "email": email,
-            "password": password,
+            "password": get_password_hash(password),
             "is_admin": is_admin,
             "created_at": datetime.utcnow().isoformat(),
             "assigned_accounts": []
@@ -52,6 +53,24 @@ class Database:
         return users
 
     # Account methods
+    def get_accounts(self, user_email: Optional[str] = None) -> List[Dict]:
+        data = self._read_data()
+        accounts = data["accounts"]
+        
+        if user_email and not self.get_user_by_email(user_email).get("is_admin", False):
+            user_accounts = [ua["account_id"] for ua in data["user_accounts"] 
+                           if ua["user_id"] == user_email]
+            accounts = [a for a in accounts if a["id"] in user_accounts]
+            
+        # Add session info to each account
+        for account in accounts:
+            account["active_sessions"] = sum(
+                ua["active_sessions"] for ua in data["user_accounts"]
+                if ua["account_id"] == account["id"]
+            )
+            
+        return accounts
+
     def create_account(self, account_data: Dict) -> Dict:
         data = self._read_data()
         
@@ -71,71 +90,54 @@ class Database:
         self._write_data(data)
         return account
 
-    def get_accounts(self, user_email: Optional[str] = None) -> List[Dict]:
+    def delete_account(self, account_id: int) -> bool:
         data = self._read_data()
-        accounts = data["accounts"]
+        initial_length = len(data["accounts"])
+        data["accounts"] = [a for a in data["accounts"] if a["id"] != account_id]
         
-        if user_email:
-            user_accounts = [ua["account_id"] for ua in data["user_accounts"] 
-                           if ua["user_id"] == user_email]
-            accounts = [a for a in accounts if a["id"] in user_accounts]
-            
-        # Add session info to each account
-        for account in accounts:
-            account["active_sessions"] = sum(
-                ua["active_sessions"] for ua in data["user_accounts"]
-                if ua["account_id"] == account["id"]
-            )
-            
-        return accounts
-
-    def get_session_info(self, account_id: int) -> Dict:
-        data = self._read_data()
-        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
-        if not account:
-            return {"active_sessions": 0, "max_concurrent_users": 0}
-
-        active_sessions = sum(
-            ua["active_sessions"] for ua in data["user_accounts"]
-            if ua["account_id"] == account_id
-        )
-
-        return {
-            "active_sessions": active_sessions,
-            "max_concurrent_users": account.get("max_concurrent_users", 
-                                             settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        }
-
-    def assign_account_to_user(self, user_id: str, account_id: int) -> Dict:
-        data = self._read_data()
-        
-        # Check if assignment already exists
-        existing = next((ua for ua in data["user_accounts"] 
-                        if ua["user_id"] == user_id and ua["account_id"] == account_id), None)
-        
-        if not existing:
-            assignment = {
-                "user_id": user_id,
-                "account_id": account_id,
-                "active_sessions": 0,
-                "last_activity": datetime.utcnow().isoformat()
-            }
-            data["user_accounts"].append(assignment)
+        if len(data["accounts"]) < initial_length:
+            # Also remove account assignments
+            data["user_accounts"] = [
+                ua for ua in data["user_accounts"] 
+                if ua["account_id"] != account_id
+            ]
             self._write_data(data)
-            return assignment
-            
-        return existing
+            return True
+        return False
 
-    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
+    # Proxy methods
+    def get_proxies(self) -> List[Dict]:
+        data = self._read_data()
+        return data.get("proxies", [])
+
+    def create_proxy(self, proxy_data: Dict) -> Dict:
         data = self._read_data()
         
-        initial_length = len(data["user_accounts"])
-        data["user_accounts"] = [
-            ua for ua in data["user_accounts"] 
-            if not (ua["user_id"] == user_id and ua["account_id"] == account_id)
-        ]
+        # Generate new proxy ID
+        new_id = max([p.get("id", 0) for p in data.get("proxies", [])], default=0) + 1
         
-        if len(data["user_accounts"]) < initial_length:
+        proxy = {
+            "id": new_id,
+            **proxy_data
+        }
+        
+        if "proxies" not in data:
+            data["proxies"] = []
+            
+        data["proxies"].append(proxy)
+        self._write_data(data)
+        return proxy
+
+    def delete_proxy(self, proxy_id: int) -> bool:
+        data = self._read_data()
+        
+        if "proxies" not in data:
+            return False
+            
+        initial_length = len(data["proxies"])
+        data["proxies"] = [p for p in data["proxies"] if p["id"] != proxy_id]
+        
+        if len(data["proxies"]) < initial_length:
             self._write_data(data)
             return True
             

@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from .auth import get_password_hash
+from datetime import datetime
 
 class Settings(BaseSettings):
     SECRET_KEY: str = "artutos123"
@@ -23,7 +24,8 @@ class Settings(BaseSettings):
                     {
                         "email": self.ADMIN_EMAIL,
                         "password": get_password_hash(self.ADMIN_PASSWORD),
-                        "is_admin": True
+                        "is_admin": True,
+                        "created_at": datetime.utcnow().isoformat()
                     }
                 ],
                 "accounts": [],

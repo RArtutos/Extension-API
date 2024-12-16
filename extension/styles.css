@@ -1,33 +1,139 @@
-/* Add to existing styles */
+/* General Styles */
+body {
+  width: 350px;
+  margin: 0;
+  padding: 16px;
+  font-family: 'Inter', sans-serif;
+}
+
+.container {
+  padding: 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Forms */
+input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+button {
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+button:hover {
+  background-color: #1d4ed8;
+}
+
+button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Account List */
+.account-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.account-item.active {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
 .account-item.disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.account-item.disabled button {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-.session-info {
-    font-size: 12px;
-    color: #666;
-    margin-top: 4px;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .account-info {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-name {
+  font-weight: 500;
+}
+
+.account-group {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.session-info {
+  font-size: 12px;
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+/* Messages */
+.error-message, .success-message {
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 .error-message {
-    background-color: #fee2e2;
-    border: 1px solid #ef4444;
-    color: #dc2626;
-    padding: 8px;
-    border-radius: 6px;
-    margin-top: 8px;
-    font-size: 14px;
+  background-color: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
 }
 
-/* [Previous styles remain unchanged] */
+.success-message {
+  background-color: #dcfce7;
+  border: 1px solid #22c55e;
+  color: #16a34a;
+}
+
+/* Toggle Switch */
+.toggle {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.toggle-label {
+  margin-left: 8px;
+}
+
+/* Footer */
+.footer {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.stats-button {
+  background-color: #4b5563;
+}
+
+.stats-button:hover {
+  background-color: #374151;
+}
+
+.logout-button {
+  background-color: #dc2626;
+}
+
+.logout-button:hover {
+  background-color: #b91c1c;
+}
