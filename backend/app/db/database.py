@@ -16,11 +16,18 @@ class Database:
         with open(self.file_path, 'w') as f:
             json.dump(data, f, indent=2)
 
-    # User methods
+    # User methods with expiration support
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         data = self._read_data()
         user = next((user for user in data["users"] if user["email"] == email), None)
+        
         if user:
+            # Check expiration
+            if user.get("expires_at"):
+                expires_at = datetime.fromisoformat(user["expires_at"])
+                if datetime.utcnow() > expires_at:
+                    return None
+                    
             # Add assigned accounts
             user["assigned_accounts"] = [
                 ua["account_id"] for ua in data["user_accounts"] 
@@ -28,162 +35,150 @@ class Database:
             ]
         return user
 
-    def create_user(self, email: str, password: str, is_admin: bool = False) -> Dict:
+    def create_user(self, email: str, password: str, is_admin: bool = False, 
+                   expires_in_days: Optional[int] = None, preset_id: Optional[int] = None) -> Dict:
         data = self._read_data()
+        
+        expires_at = None
+        if expires_in_days is not None:
+            expires_at = (datetime.utcnow() + timedelta(days=expires_in_days)).isoformat()
+
         user = {
             "email": email,
             "password": get_password_hash(password),
             "is_admin": is_admin,
             "created_at": datetime.utcnow().isoformat(),
+            "expires_at": expires_at,
+            "preset_id": preset_id,
             "assigned_accounts": []
         }
+        
         data["users"].append(user)
         self._write_data(data)
+
+        # Apply preset if provided
+        if preset_id is not None:
+            preset = self.get_preset(preset_id)
+            if preset:
+                for account_id in preset["account_ids"]:
+                    self.assign_account_to_user(email, account_id)
+
         return user
 
-    def get_users(self) -> List[Dict]:
+    # Session management methods
+    def create_session(self, session_data: Dict) -> bool:
         data = self._read_data()
-        users = data["users"]
-        # Add assigned accounts to each user
-        for user in users:
-            user["assigned_accounts"] = [
-                ua["account_id"] for ua in data["user_accounts"] 
-                if ua["user_id"] == user["email"]
-            ]
-        return users
-
-    # Account methods
-    def get_accounts(self, user_email: Optional[str] = None) -> List[Dict]:
-        data = self._read_data()
-        accounts = data["accounts"]
-        
-        if user_email:
-            user = self.get_user_by_email(user_email)
-            if not user.get("is_admin"):
-                user_accounts = [ua["account_id"] for ua in data["user_accounts"] 
-                               if ua["user_id"] == user_email]
-                accounts = [a for a in accounts if a["id"] in user_accounts]
+        if "sessions" not in data:
+            data["sessions"] = []
             
-        # Add session info to each account
-        for account in accounts:
-            account["active_sessions"] = sum(
-                ua["active_sessions"] for ua in data["user_accounts"]
-                if ua["account_id"] == account["id"]
-            )
-            account["max_concurrent_users"] = account.get("max_concurrent_users", 
-                                                        settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-            
-        return accounts
-
-    def create_account(self, account_data: Dict) -> Dict:
-        data = self._read_data()
-        
-        # Generate new ID
-        new_id = max([a.get("id", 0) for a in data["accounts"]], default=0) + 1
-        
-        account = {
-            "id": new_id,
-            "name": account_data["name"],
-            "group": account_data.get("group"),
-            "cookies": account_data.get("cookies", []),
-            "max_concurrent_users": account_data.get("max_concurrent_users", 
-                                                   settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
+        session_id = max([s.get("id", 0) for s in data["sessions"]], default=0) + 1
+        session = {
+            "id": session_id,
+            **session_data
         }
         
-        data["accounts"].append(account)
+        data["sessions"].append(session)
         self._write_data(data)
-        return account
+        return True
 
-    def update_account(self, account_id: int, account_data: Dict) -> Optional[Dict]:
+    def update_session_activity(self, user_id: str, account_id: int, domain: Optional[str] = None) -> bool:
         data = self._read_data()
-        account_index = next((i for i, a in enumerate(data["accounts"]) 
-                            if a["id"] == account_id), None)
+        session = next(
+            (s for s in data["sessions"] 
+             if s["user_id"] == user_id and s["account_id"] == account_id),
+            None
+        )
         
-        if account_index is None:
-            return None
-            
-        account = data["accounts"][account_index]
-        account.update({
-            "name": account_data["name"],
-            "group": account_data.get("group"),
-            "cookies": account_data.get("cookies", []),
-            "max_concurrent_users": account_data.get("max_concurrent_users", 
-                                                   settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        })
-        
-        data["accounts"][account_index] = account
-        self._write_data(data)
-        return account
-
-    def delete_account(self, account_id: int) -> bool:
-        data = self._read_data()
-        initial_length = len(data["accounts"])
-        
-        data["accounts"] = [a for a in data["accounts"] if a["id"] != account_id]
-        data["user_accounts"] = [ua for ua in data["user_accounts"] 
-                               if ua["account_id"] != account_id]
-        
-        if len(data["accounts"]) < initial_length:
+        if session:
+            session["last_activity"] = datetime.utcnow().isoformat()
+            session["domain"] = domain
             self._write_data(data)
             return True
         return False
 
-    def get_session_info(self, account_id: int) -> Dict:
+    def cleanup_inactive_sessions(self, timeout_timestamp: str) -> int:
         data = self._read_data()
-        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+        initial_count = len(data["sessions"])
         
-        if not account:
-            return {"active_sessions": 0, "max_concurrent_users": 0}
-            
-        active_sessions = sum(
-            ua["active_sessions"] for ua in data["user_accounts"]
-            if ua["account_id"] == account_id
-        )
-        
-        return {
-            "active_sessions": active_sessions,
-            "max_concurrent_users": account.get("max_concurrent_users", 
-                                              settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        }
-
-    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
-        data = self._read_data()
-        
-        # Check if user and account exist
-        user = self.get_user_by_email(user_id)
-        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
-        
-        if not user or not account:
-            return False
-            
-        # Check if assignment already exists
-        if any(ua["user_id"] == user_id and ua["account_id"] == account_id 
-               for ua in data["user_accounts"]):
-            return False
-            
-        # Create new assignment
-        assignment = {
-            "user_id": user_id,
-            "account_id": account_id,
-            "active_sessions": 0,
-            "max_concurrent_users": account.get("max_concurrent_users", 1),
-            "last_activity": None
-        }
-        
-        data["user_accounts"].append(assignment)
-        self._write_data(data)
-        return True
-
-    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
-        data = self._read_data()
-        initial_length = len(data["user_accounts"])
-        
-        data["user_accounts"] = [
-            ua for ua in data["user_accounts"]
-            if not (ua["user_id"] == user_id and ua["account_id"] == account_id)
+        data["sessions"] = [
+            s for s in data["sessions"]
+            if s["last_activity"] > timeout_timestamp
         ]
         
-        if len(data["user_accounts"]) < initial_length:
+        self._write_data(data)
+        return initial_count - len(data["sessions"])
+
+    def get_active_sessions(self, account_id: int) -> List[Dict]:
+        data = self._read_data()
+        return [s for s in data["sessions"] if s["account_id"] == account_id]
+
+    def remove_session(self, user_id: str, account_id: int) -> bool:
+        data = self._read_data()
+        initial_count = len(data["sessions"])
+        
+        data["sessions"] = [
+            s for s in data["sessions"]
+            if not (s["user_id"] == user_id and s["account_id"] == account_id)
+        ]
+        
+        if len(data["sessions"]) < initial_count:
+            self._write_data(data)
+            return True
+        return False
+
+    # Preset management methods
+    def create_preset(self, preset_data: Dict) -> Dict:
+        data = self._read_data()
+        if "presets" not in data:
+            data["presets"] = []
+            
+        preset_id = max([p.get("id", 0) for p in data["presets"]], default=0) + 1
+        preset = {
+            "id": preset_id,
+            "created_at": datetime.utcnow().isoformat(),
+            **preset_data
+        }
+        
+        data["presets"].append(preset)
+        self._write_data(data)
+        return preset
+
+    def get_preset(self, preset_id: int) -> Optional[Dict]:
+        data = self._read_data()
+        return next(
+            (p for p in data.get("presets", []) if p["id"] == preset_id),
+            None
+        )
+
+    def get_presets(self) -> List[Dict]:
+        data = self._read_data()
+        return data.get("presets", [])
+
+    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
+        data = self._read_data()
+        preset_index = next(
+            (i for i, p in enumerate(data.get("presets", []))
+             if p["id"] == preset_id),
+            None
+        )
+        
+        if preset_index is not None:
+            preset = data["presets"][preset_index]
+            preset.update(preset_data)
+            self._write_data(data)
+            return preset
+        return None
+
+    def delete_preset(self, preset_id: int) -> bool:
+        data = self._read_data()
+        initial_count = len(data.get("presets", []))
+        
+        data["presets"] = [
+            p for p in data.get("presets", [])
+            if p["id"] != preset_id
+        ]
+        
+        if len(data["presets"]) < initial_count:
             self._write_data(data)
             return True
         return False
