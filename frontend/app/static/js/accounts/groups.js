@@ -15,14 +15,6 @@ export class AccountGroupManager {
         document.querySelectorAll('.assign-to-group').forEach(button => {
             button.addEventListener('click', (e) => this.handleGroupAssignment(e));
         });
-
-        const form = document.getElementById('create-group-form');
-        if (form) {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await this.createGroup(new FormData(form));
-            });
-        }
     }
 
     async showCreateGroupModal() {
@@ -34,19 +26,6 @@ export class AccountGroupManager {
         if (form) form.reset();
         
         new bootstrap.Modal(modal).show();
-    }
-
-    async createGroup(formData) {
-        try {
-            // Submit the form directly to the server-side endpoint
-            const form = document.getElementById('create-group-form');
-            form.action = '/groups/create';
-            form.method = 'POST';
-            form.submit();
-        } catch (error) {
-            console.error('Error creating group:', error);
-            alert('Failed to create group. Please try again.');
-        }
     }
 
     async handleGroupAssignment(event) {
