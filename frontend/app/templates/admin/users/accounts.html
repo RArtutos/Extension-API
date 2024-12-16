@@ -34,6 +34,7 @@
                 <div class="card-body">
                     <div class="list-group">
                         {% for account in available_accounts %}
+                        {% if account.id not in accounts|map(attribute='id')|list %}
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             {{ account.name }}
                             <button class="btn btn-sm btn-success" 
@@ -41,6 +42,7 @@
                                 Assign
                             </button>
                         </div>
+                        {% endif %}
                         {% endfor %}
                     </div>
                 </div>
@@ -57,16 +59,21 @@ async function assignAccount(userId, accountId) {
         const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token() }}'
             }
         });
-        if (response.ok) {
+        
+        const data = await response.json();
+        
+        if (data.success) {
             location.reload();
         } else {
-            alert('Failed to assign account');
+            alert(data.message || 'Failed to assign account');
         }
     } catch (error) {
-        alert('Error assigning account');
+        alert('Error assigning account: ' + error.message);
+        console.error('Error:', error);
     }
 }
 
@@ -74,20 +81,26 @@ async function removeAccount(userId, accountId) {
     if (!confirm('Are you sure you want to remove this account?')) {
         return;
     }
+    
     try {
         const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
             method: 'DELETE',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token() }}'
             }
         });
-        if (response.ok) {
+        
+        const data = await response.json();
+        
+        if (data.success) {
             location.reload();
         } else {
-            alert('Failed to remove account');
+            alert(data.message || 'Failed to remove account');
         }
     } catch (error) {
-        alert('Error removing account');
+        alert('Error removing account: ' + error.message);
+        console.error('Error:', error);
     }
 }
 </script>

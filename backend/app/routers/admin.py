@@ -4,7 +4,7 @@ from ..db.database import Database
 from ..core.auth import get_current_admin_user
 from ..schemas.user import UserCreate, UserResponse
 
-router = APIRouter(prefix="/api/admin")
+router = APIRouter()
 db = Database()
 
 @router.get("/users", response_model=List[UserResponse])

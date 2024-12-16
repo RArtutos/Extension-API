@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers with correct prefixes
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(accounts.router, prefix="/api/accounts", tags=["accounts"])
 app.include_router(proxies.router, prefix="/api/proxies", tags=["proxies"])

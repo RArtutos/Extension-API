@@ -19,7 +19,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object('app.config.Config')
     
-    # Configuración de sesión
+    # Session configuration
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
     app.config['SESSION_REFRESH_EACH_REQUEST'] = True
     
@@ -30,10 +30,15 @@ def create_app():
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
     
-    from .routes import auth, accounts, proxies, admin
-    app.register_blueprint(auth.bp)
-    app.register_blueprint(accounts.bp)
-    app.register_blueprint(proxies.bp)
-    app.register_blueprint(admin.bp)
+    # Import and register blueprints
+    from .routes.auth import bp as auth_bp
+    from .routes.accounts import bp as accounts_bp
+    from .routes.proxies import bp as proxies_bp
+    from .routes.admin import bp as admin_bp
+    
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(accounts_bp)
+    app.register_blueprint(proxies_bp)
+    app.register_blueprint(admin_bp)
     
     return app
