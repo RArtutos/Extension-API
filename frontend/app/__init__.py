@@ -1,8 +1,8 @@
-from flask import Flask, session
+from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
-from .config import Config
+from datetime import timedelta
 from .models.user import User
 
 login_manager = LoginManager()
@@ -11,16 +11,17 @@ flask_session = Session()
 
 @login_manager.user_loader
 def load_user(user_id):
-    if 'user_token' not in session:
-        return None
-    
     from .services.auth import AuthService
     auth_service = AuthService()
     return auth_service.get_user(user_id)
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object('app.config.Config')
+    
+    # Configuración de sesión
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+    app.config['SESSION_REFRESH_EACH_REQUEST'] = True
     
     login_manager.init_app(app)
     csrf.init_app(app)
