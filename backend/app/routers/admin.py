@@ -4,13 +4,19 @@ from ..core.auth import get_current_admin_user
 from ..db.database import Database
 from ..schemas.user import UserCreate, UserResponse, UserAccountAssignment
 from ..schemas.analytics import AnalyticsResponse
+from datetime import datetime
 
 router = APIRouter()
 db = Database()
 
 @router.get("/users", response_model=List[UserResponse])
 async def get_users(current_user: dict = Depends(get_current_admin_user)):
-    return db.get_users()
+    users = db.get_users()
+    # Ensure all users have the required fields
+    for user in users:
+        if "created_at" not in user:
+            user["created_at"] = datetime.utcnow().isoformat()
+    return users
 
 @router.post("/users", response_model=UserResponse)
 async def create_user(user: UserCreate, current_user: dict = Depends(get_current_admin_user)):
@@ -19,35 +25,4 @@ async def create_user(user: UserCreate, current_user: dict = Depends(get_current
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    return db.create_user(user.email, user.password)
-
-@router.post("/users/{user_email}/accounts/{account_id}")
-async def assign_account_to_user(
-    user_email: str,
-    account_id: int,
-    current_user: dict = Depends(get_current_admin_user)
-):
-    user = db.get_user_by_email(user_email)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return db.assign_account_to_user(user_email, account_id)
-
-@router.delete("/users/{user_email}/accounts/{account_id}")
-async def remove_account_from_user(
-    user_email: str,
-    account_id: int,
-    current_user: dict = Depends(get_current_admin_user)
-):
-    if db.remove_account_from_user(user_email, account_id):
-        return {"message": "Account removed from user"}
-    raise HTTPException(status_code=404, detail="Assignment not found")
-
-@router.get("/analytics", response_model=List[AnalyticsResponse])
-async def get_analytics(
-    days: int = 30,
-    user_email: str = None,
-    account_id: int = None,
-    current_user: dict = Depends(get_current_admin_user)
-):
-    return db.get_analytics(days, user_email, account_id)
+    return db.create_user(user.email, user.password, user.is_admin)

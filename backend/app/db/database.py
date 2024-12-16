@@ -52,6 +52,25 @@ class Database:
         return users
 
     # Account methods
+    def create_account(self, account_data: Dict) -> Dict:
+        data = self._read_data()
+        
+        # Generate new account ID
+        new_id = max([a.get("id", 0) for a in data["accounts"]], default=0) + 1
+        
+        account = {
+            "id": new_id,
+            "name": account_data["name"],
+            "group": account_data.get("group"),
+            "cookies": account_data.get("cookies", []),
+            "max_concurrent_users": account_data.get("max_concurrent_users", 
+                                                   settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
+        }
+        
+        data["accounts"].append(account)
+        self._write_data(data)
+        return account
+
     def get_accounts(self, user_email: Optional[str] = None) -> List[Dict]:
         data = self._read_data()
         accounts = data["accounts"]
@@ -87,4 +106,37 @@ class Database:
                                              settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
         }
 
-    # [Previous methods remain unchanged]
+    def assign_account_to_user(self, user_id: str, account_id: int) -> Dict:
+        data = self._read_data()
+        
+        # Check if assignment already exists
+        existing = next((ua for ua in data["user_accounts"] 
+                        if ua["user_id"] == user_id and ua["account_id"] == account_id), None)
+        
+        if not existing:
+            assignment = {
+                "user_id": user_id,
+                "account_id": account_id,
+                "active_sessions": 0,
+                "last_activity": datetime.utcnow().isoformat()
+            }
+            data["user_accounts"].append(assignment)
+            self._write_data(data)
+            return assignment
+            
+        return existing
+
+    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
+        data = self._read_data()
+        
+        initial_length = len(data["user_accounts"])
+        data["user_accounts"] = [
+            ua for ua in data["user_accounts"] 
+            if not (ua["user_id"] == user_id and ua["account_id"] == account_id)
+        ]
+        
+        if len(data["user_accounts"]) < initial_length:
+            self._write_data(data)
+            return True
+            
+        return False

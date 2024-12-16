@@ -1,15 +1,39 @@
 from typing import Optional, Dict
-from ..core.http_client import HttpClient
+import requests
+from flask_login import current_user
+from ..core.session import SessionManager
 from ..config import Config
 
 class BaseService:
     def __init__(self, endpoint: str):
-        self.http_client = HttpClient(Config.API_URL)
         self.endpoint = endpoint
+        self.base_url = Config.API_URL
 
-    def _handle_request(self, operation: str, *args, **kwargs) -> Optional[Dict]:
+    def _get_headers(self) -> Dict:
+        token = SessionManager.get_stored_token()
+        if token:
+            return {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            }
+        return {'Content-Type': 'application/json'}
+
+    def _handle_request(self, operation: str, endpoint: str, data: Dict = None, params: Dict = None) -> Optional[Dict]:
         try:
-            return getattr(self.http_client, operation)(*args, **kwargs)
+            url = f"{self.base_url}{endpoint}"
+            headers = self._get_headers()
+            
+            if operation == 'get':
+                response = requests.get(url, headers=headers, params=params)
+            elif operation == 'post':
+                response = requests.post(url, headers=headers, json=data)
+            elif operation == 'put':
+                response = requests.put(url, headers=headers, json=data)
+            elif operation == 'delete':
+                response = requests.delete(url, headers=headers)
+            
+            response.raise_for_status()
+            return response.json() if response.content else None
         except Exception as e:
             print(f"Error in {operation}: {str(e)}")
             return None
