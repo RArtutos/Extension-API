@@ -2,14 +2,16 @@ version: '3.8'
 
 services:
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "31000:31000"
+      - "5173:5173"
     volumes:
       - ./frontend:/app
+      - /app/node_modules
     environment:
-      - API_URL=http://backend:8000
-      - SECRET_KEY=dev-secret-key
+      - VITE_API_URL=http://backend:8000
     depends_on:
       - backend
 
@@ -25,6 +27,3 @@ services:
       - ADMIN_EMAIL=admin@artutos.eu.org
       - ADMIN_PASSWORD=artutos123
       - DATA_FILE=/app/data/db.json
-
-volumes:
-  data:
