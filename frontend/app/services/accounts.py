@@ -19,48 +19,29 @@ class AccountService:
             print(f"Error fetching accounts: {str(e)}")
             return []
     
-    def get_by_id(self, account_id: int) -> Optional[Dict]:
+    def get_session_info(self, account_id: int) -> Dict:
         try:
             response = requests.get(
-                f"{self.api_url}/{account_id}",
-                headers={'Authorization': f'Bearer {current_user.token}'}
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException:
-            return None
-    
-    def create(self, data: Dict) -> Dict:
-        try:
-            response = requests.post(
-                self.api_url,
-                json=data,
+                f"{self.api_url}/{account_id}/session",
                 headers={'Authorization': f'Bearer {current_user.token}'}
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            raise Exception(f"Failed to create account: {str(e)}")
-    
-    def update(self, account_id: int, data: Dict) -> Dict:
+            print(f"Error fetching session info: {str(e)}")
+            return {'active_sessions': 0, 'max_concurrent_users': 0}
+
+    def get_analytics(self, account_id: Optional[int] = None) -> List[Dict]:
         try:
-            response = requests.put(
-                f"{self.api_url}/{account_id}",
-                json=data,
+            url = f"{Config.API_URL}/api/admin/analytics"
+            if account_id:
+                url += f"?account_id={account_id}"
+            response = requests.get(
+                url,
                 headers={'Authorization': f'Bearer {current_user.token}'}
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            raise Exception(f"Failed to update account: {str(e)}")
-    
-    def delete(self, account_id: int) -> bool:
-        try:
-            response = requests.delete(
-                f"{self.api_url}/{account_id}",
-                headers={'Authorization': f'Bearer {current_user.token}'}
-            )
-            response.raise_for_status()
-            return True
-        except requests.RequestException:
-            return False
+            print(f"Error fetching analytics: {str(e)}")
+            return []

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Manage Accounts for {{ user.email }}</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    Assigned Accounts
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for account in accounts %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ account.name }}
+                            <button class="btn btn-sm btn-danger" 
+                                    onclick="removeAccount('{{ user.email }}', {{ account.id }})">
+                                Remove
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Available Accounts
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for account in available_accounts %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ account.name }}
+                            <button class="btn btn-sm btn-success" 
+                                    onclick="assignAccount('{{ user.email }}', {{ account.id }})">
+                                Assign
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function assignAccount(userId, accountId) {
+    try {
+        const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to assign account');
+        }
+    } catch (error) {
+        alert('Error assigning account');
+    }
+}
+
+async function removeAccount(userId, accountId) {
+    if (!confirm('Are you sure you want to remove this account?')) {
+        return;
+    }
+    try {
+        const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to remove account');
+        }
+    } catch (error) {
+        alert('Error removing account');
+    }
+}
+</script>
+{% endblock %}
