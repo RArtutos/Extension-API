@@ -35,6 +35,17 @@ class AdminService(BaseService):
             print(f"Error assigning account: {str(e)}")
             return False
 
+    def assign_group_to_user(self, user_id: str, group_id: int) -> bool:
+        try:
+            result = self._handle_request(
+                'post',
+                f"{self.endpoint}/users/{user_id}/groups/{group_id}"
+            )
+            return bool(result and result.get('message'))
+        except Exception as e:
+            print(f"Error assigning group: {str(e)}")
+            return False
+
     def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
         try:
             result = self._handle_request(

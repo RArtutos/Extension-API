@@ -5,9 +5,13 @@ from ..db.database import Database
 from ..core.auth import get_current_admin_user
 from ..schemas.user import UserCreate, UserResponse
 from ..schemas.analytics import AnalyticsResponse
+from ..db.repositories.group_repository import GroupRepository
+from ..db.repositories.account_repository import AccountRepository
 
 router = APIRouter()
 db = Database()
+group_repo = GroupRepository()
+account_repo = AccountRepository()
 
 @router.get("/users", response_model=List[UserResponse])
 async def get_users(current_user: dict = Depends(get_current_admin_user)):
@@ -41,6 +45,39 @@ async def assign_account_to_user(
             detail="Failed to assign account"
         )
     return {"message": "Account assigned successfully"}
+
+@router.post("/users/{user_id}/groups/{group_id}")
+async def assign_group_to_user(
+    user_id: str,
+    group_id: int,
+    current_user: dict = Depends(get_current_admin_user)
+):
+    try:
+        # Get all accounts in the group
+        group = group_repo.get_by_id(group_id)
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+            
+        accounts = group_repo.get_accounts_by_group(group_id)
+        success = True
+        
+        # Assign each account to the user
+        for account in accounts:
+            if not db.assign_account_to_user(user_id, account["id"]):
+                success = False
+                
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Some accounts could not be assigned"
+            )
+            
+        return {"message": "Group accounts assigned successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 @router.delete("/users/{user_id}/accounts/{account_id}")
 async def remove_account_from_user(

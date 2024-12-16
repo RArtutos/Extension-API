@@ -9,17 +9,19 @@
         <div class="col-md-12 mb-4">
             <div class="card">
                 <div class="card-header">
-                    Assign Account Groups
+                    <h5 class="mb-0">Assign Account Groups</h5>
                 </div>
                 <div class="card-body">
                     <form id="assign-group-form" class="mb-3">
                         <div class="row align-items-end">
                             <div class="col">
                                 <label for="group-select" class="form-label">Select Group</label>
-                                <select id="group-select" class="form-control">
+                                <select id="group-select" class="form-select">
                                     <option value="">Choose a group...</option>
                                     {% for group in groups %}
-                                    <option value="{{ group.id }}">{{ group.name }} ({{ group.accounts|length }} accounts)</option>
+                                        <option value="{{ group.id }}">
+                                            {{ group.name }} ({{ group.accounts|length }} accounts)
+                                        </option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -34,9 +36,9 @@
 
         <!-- Individual Accounts -->
         <div class="col-md-6">
-            <div class="card mb-4">
+            <div class="card">
                 <div class="card-header">
-                    Assigned Accounts
+                    <h5 class="mb-0">Assigned Accounts</h5>
                 </div>
                 <div class="card-body">
                     <div class="list-group">
@@ -44,7 +46,9 @@
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             {{ account.name }}
                             <div>
+                                {% if account.group %}
                                 <span class="badge bg-secondary me-2">{{ account.group }}</span>
+                                {% endif %}
                                 <button class="btn btn-sm btn-danger" 
                                         onclick="removeAccount('{{ user.email }}', {{ account.id }})">
                                     Remove
@@ -52,6 +56,11 @@
                             </div>
                         </div>
                         {% endfor %}
+                        {% if not accounts %}
+                        <div class="text-center text-muted py-3">
+                            No accounts assigned yet
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -60,7 +69,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    Available Accounts
+                    <h5 class="mb-0">Available Accounts</h5>
                 </div>
                 <div class="card-body">
                     <div class="list-group">
@@ -69,7 +78,9 @@
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             {{ account.name }}
                             <div>
+                                {% if account.group %}
                                 <span class="badge bg-secondary me-2">{{ account.group }}</span>
+                                {% endif %}
                                 <button class="btn btn-sm btn-success" 
                                         onclick="assignAccount('{{ user.email }}', {{ account.id }})">
                                     Assign
@@ -78,6 +89,11 @@
                         </div>
                         {% endif %}
                         {% endfor %}
+                        {% if not available_accounts %}
+                        <div class="text-center text-muted py-3">
+                            No available accounts
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

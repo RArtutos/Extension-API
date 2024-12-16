@@ -16,12 +16,11 @@ export class AccountGroupManager {
             button.addEventListener('click', (e) => this.handleGroupAssignment(e));
         });
 
-        // Add form submit handler
         const form = document.getElementById('create-group-form');
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                await this.createGroup(new FormData(e.target));
+                await this.createGroup(new FormData(form));
             });
         }
     }
@@ -29,6 +28,11 @@ export class AccountGroupManager {
     async showCreateGroupModal() {
         const modal = document.getElementById('create-group-modal');
         if (!modal) return;
+        
+        // Reset form
+        const form = document.getElementById('create-group-form');
+        if (form) form.reset();
+        
         new bootstrap.Modal(modal).show();
     }
 
@@ -46,12 +50,16 @@ export class AccountGroupManager {
                 })
             });
 
-            const data = await response.json();
-            
             if (!response.ok) {
+                const data = await response.json();
                 throw new Error(data.error || 'Failed to create group');
             }
 
+            // Close modal and reload page
+            const modal = document.getElementById('create-group-modal');
+            const bootstrapModal = bootstrap.Modal.getInstance(modal);
+            if (bootstrapModal) bootstrapModal.hide();
+            
             window.location.reload();
         } catch (error) {
             console.error('Error creating group:', error);
@@ -72,9 +80,8 @@ export class AccountGroupManager {
                 }
             });
 
-            const data = await response.json();
-            
             if (!response.ok) {
+                const data = await response.json();
                 throw new Error(data.error || 'Failed to assign group');
             }
 

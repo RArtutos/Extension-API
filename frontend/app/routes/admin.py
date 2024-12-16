@@ -20,7 +20,7 @@ def user_accounts(user_id):
         
     accounts = admin_service.get_user_accounts(user_id)
     available_accounts = admin_service.get_available_accounts()
-    groups = group_service.get_all()
+    groups = group_service.get_all()  # Get all available groups
     
     return render_template('admin/users/accounts.html', 
                          user=user, 
