@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Account Manager</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,19 +10,15 @@
     <!-- Login Form -->
     <div id="login-form" class="container">
       <h2>Login</h2>
-      <form>
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button type="submit" id="login-btn">Login</button>
-      </form>
-      <div id="error-message" class="error-message hidden"></div>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button id="login-btn">Login</button>
     </div>
     
     <!-- Account Manager -->
     <div id="account-manager" class="container hidden">
       <div class="header">
         <h2>Accounts</h2>
-        <div class="session-info" id="global-session-info"></div>
       </div>
       
       <div id="accounts-list"></div>
@@ -31,20 +26,14 @@
       <div class="proxy-section">
         <label class="toggle">
           <input type="checkbox" id="use-proxy">
-          <span class="toggle-label">Use Proxy</span>
+          <span>Use Proxy</span>
         </label>
-        <div id="proxy-status" class="status-text"></div>
       </div>
 
-      <div id="success-message" class="success-message hidden"></div>
-      
-      <div class="footer">
-        <button id="view-stats" class="stats-button">View Statistics</button>
-        <button id="logout-btn" class="logout-button">Logout</button>
-      </div>
+      <button id="logout-btn">Logout</button>
     </div>
   </div>
-
+  
   <script type="module" src="js/popup.js"></script>
 </body>
 </html>

@@ -1,41 +1,33 @@
 import { accountManager } from './accountManager.js';
+import { storage } from './utils/storage.js';
+import { api } from './utils/api.js';
 import { ui } from './utils/ui.js';
 
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  accountManager.init();
-  attachEventListeners();
+// Event Listeners
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  try {
+    const data = await api.login(email, password);
+    if (data.access_token) {
+      await storage.set('token', data.access_token);
+      accountManager.init();
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+    ui.showError('Login failed. Please try again.');
+  }
 });
 
-function attachEventListeners() {
-  // Login form
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      await accountManager.login(email, password);
-    });
-  }
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await storage.remove(['token', 'currentAccount']);
+  ui.showLoginForm();
+});
 
-  // Logout button
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => accountManager.logout());
-  }
+document.getElementById('use-proxy').addEventListener('change', (e) => {
+  accountManager.setProxyEnabled(e.target.checked);
+});
 
-  // Proxy toggle
-  const proxyToggle = document.getElementById('use-proxy');
-  if (proxyToggle) {
-    proxyToggle.addEventListener('change', (e) => {
-      accountManager.setProxyEnabled(e.target.checked);
-    });
-  }
-
-  // Stats button
-  const statsBtn = document.getElementById('view-stats');
-  if (statsBtn) {
-    statsBtn.addEventListener('click', () => accountManager.showStats());
-  }
-}
+// Initialize the application
+accountManager.init();

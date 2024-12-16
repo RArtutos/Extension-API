@@ -1,29 +1,29 @@
+// UI Class for managing the extension interface
 class UI {
   showLoginForm() {
-    this._showElement('login-form');
-    this._hideElement('account-manager');
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('account-manager').classList.add('hidden');
   }
 
   showAccountManager() {
-    this._hideElement('login-form');
-    this._showElement('account-manager');
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('account-manager').classList.remove('hidden');
   }
 
   updateAccountsList(accounts, currentAccount) {
     const accountsList = document.getElementById('accounts-list');
-    if (!accountsList) return;
-
     accountsList.innerHTML = accounts.map(account => {
       const isActive = currentAccount && currentAccount.id === account.id;
-      const sessionInfo = `${account.active_sessions}/${account.max_concurrent_users} users`;
       const isDisabled = account.active_sessions >= account.max_concurrent_users && !isActive;
       
       return `
         <div class="account-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}">
           <div class="account-info">
-            <span class="account-name">${account.name}</span>
-            <span class="account-group">${account.group || ''}</span>
-            <span class="session-info">${sessionInfo}</span>
+            <div class="account-name">${account.name}</div>
+            ${account.group ? `<div class="account-group">${account.group}</div>` : ''}
+            <div class="session-info">
+              ${account.active_sessions}/${account.max_concurrent_users} users
+            </div>
           </div>
           <button class="switch-btn" 
                   data-account='${JSON.stringify(account)}'
@@ -48,36 +48,21 @@ class UI {
   }
 
   showError(message) {
-    const errorDiv = document.getElementById('error-message');
-    if (errorDiv) {
-      errorDiv.textContent = message;
-      errorDiv.classList.remove('hidden');
-      setTimeout(() => errorDiv.classList.add('hidden'), 5000);
-    } else {
-      console.error(message);
-    }
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = message;
+    document.getElementById('app').prepend(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
   }
 
   showSuccess(message) {
-    const successDiv = document.getElementById('success-message');
-    if (successDiv) {
-      successDiv.textContent = message;
-      successDiv.classList.remove('hidden');
-      setTimeout(() => successDiv.classList.add('hidden'), 3000);
-    } else {
-      console.log(message);
-    }
-  }
-
-  _showElement(id) {
-    const element = document.getElementById(id);
-    if (element) element.classList.remove('hidden');
-  }
-
-  _hideElement(id) {
-    const element = document.getElementById(id);
-    if (element) element.classList.add('hidden');
+    const successDiv = document.createElement('div');
+    successDiv.className = 'success-message';
+    successDiv.textContent = message;
+    document.getElementById('app').prepend(successDiv);
+    setTimeout(() => successDiv.remove(), 3000);
   }
 }
 
+// Export a singleton instance
 export const ui = new UI();

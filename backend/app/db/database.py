@@ -57,10 +57,12 @@ class Database:
         data = self._read_data()
         accounts = data["accounts"]
         
-        if user_email and not self.get_user_by_email(user_email).get("is_admin", False):
-            user_accounts = [ua["account_id"] for ua in data["user_accounts"] 
-                           if ua["user_id"] == user_email]
-            accounts = [a for a in accounts if a["id"] in user_accounts]
+        if user_email:
+            user = self.get_user_by_email(user_email)
+            if not user.get("is_admin"):
+                user_accounts = [ua["account_id"] for ua in data["user_accounts"] 
+                               if ua["user_id"] == user_email]
+                accounts = [a for a in accounts if a["id"] in user_accounts]
             
         # Add session info to each account
         for account in accounts:
@@ -68,77 +70,67 @@ class Database:
                 ua["active_sessions"] for ua in data["user_accounts"]
                 if ua["account_id"] == account["id"]
             )
+            account["max_concurrent_users"] = account.get("max_concurrent_users", 
+                                                        settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
             
         return accounts
 
-    def create_account(self, account_data: Dict) -> Dict:
+    def get_session_info(self, account_id: int) -> Dict:
         data = self._read_data()
+        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
         
-        # Generate new account ID
-        new_id = max([a.get("id", 0) for a in data["accounts"]], default=0) + 1
-        
-        account = {
-            "id": new_id,
-            "name": account_data["name"],
-            "group": account_data.get("group"),
-            "cookies": account_data.get("cookies", []),
-            "max_concurrent_users": account_data.get("max_concurrent_users", 
-                                                   settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        }
-        
-        data["accounts"].append(account)
-        self._write_data(data)
-        return account
-
-    def delete_account(self, account_id: int) -> bool:
-        data = self._read_data()
-        initial_length = len(data["accounts"])
-        data["accounts"] = [a for a in data["accounts"] if a["id"] != account_id]
-        
-        if len(data["accounts"]) < initial_length:
-            # Also remove account assignments
-            data["user_accounts"] = [
-                ua for ua in data["user_accounts"] 
-                if ua["account_id"] != account_id
-            ]
-            self._write_data(data)
-            return True
-        return False
-
-    # Proxy methods
-    def get_proxies(self) -> List[Dict]:
-        data = self._read_data()
-        return data.get("proxies", [])
-
-    def create_proxy(self, proxy_data: Dict) -> Dict:
-        data = self._read_data()
-        
-        # Generate new proxy ID
-        new_id = max([p.get("id", 0) for p in data.get("proxies", [])], default=0) + 1
-        
-        proxy = {
-            "id": new_id,
-            **proxy_data
-        }
-        
-        if "proxies" not in data:
-            data["proxies"] = []
+        if not account:
+            return {"active_sessions": 0, "max_concurrent_users": 0}
             
-        data["proxies"].append(proxy)
-        self._write_data(data)
-        return proxy
+        active_sessions = sum(
+            ua["active_sessions"] for ua in data["user_accounts"]
+            if ua["account_id"] == account_id
+        )
+        
+        return {
+            "active_sessions": active_sessions,
+            "max_concurrent_users": account.get("max_concurrent_users", 
+                                              settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
+        }
 
-    def delete_proxy(self, proxy_id: int) -> bool:
+    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
         data = self._read_data()
         
-        if "proxies" not in data:
+        # Check if user and account exist
+        user = self.get_user_by_email(user_id)
+        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+        
+        if not user or not account:
             return False
             
-        initial_length = len(data["proxies"])
-        data["proxies"] = [p for p in data["proxies"] if p["id"] != proxy_id]
+        # Check if assignment already exists
+        if any(ua["user_id"] == user_id and ua["account_id"] == account_id 
+               for ua in data["user_accounts"]):
+            return False
+            
+        # Create new assignment
+        assignment = {
+            "user_id": user_id,
+            "account_id": account_id,
+            "active_sessions": 0,
+            "max_concurrent_users": account.get("max_concurrent_users", 1),
+            "last_activity": None
+        }
         
-        if len(data["proxies"]) < initial_length:
+        data["user_accounts"].append(assignment)
+        self._write_data(data)
+        return True
+
+    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
+        data = self._read_data()
+        initial_length = len(data["user_accounts"])
+        
+        data["user_accounts"] = [
+            ua for ua in data["user_accounts"]
+            if not (ua["user_id"] == user_id and ua["account_id"] == account_id)
+        ]
+        
+        if len(data["user_accounts"]) < initial_length:
             self._write_data(data)
             return True
-            
         return False

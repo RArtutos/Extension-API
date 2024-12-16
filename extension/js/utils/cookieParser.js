@@ -15,10 +15,7 @@ export function parseHeaderString(cookieString) {
     const value = trimmedPair.substring(firstEquals + 1).trim();
     
     if (name && value) {
-      cookies.push({
-        name: name,
-        value: value
-      });
+      cookies.push({ name, value });
     }
   }
   

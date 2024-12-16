@@ -1,6 +1,16 @@
-// Configuración global
+// API configuration
 export const API_URL = 'http://84.46.249.121:8000';
-export const REQUIRED_PERMISSIONS = {
-  permissions: ['cookies', 'storage', 'proxy', 'tabs'],
-  origins: ['<all_urls>']
+
+// Cookie configuration
+export const COOKIE_DEFAULTS = {
+  path: '/',
+  secure: true,
+  sameSite: 'lax'
+};
+
+// Storage keys
+export const STORAGE_KEYS = {
+  TOKEN: 'token',
+  CURRENT_ACCOUNT: 'currentAccount',
+  PROXY_ENABLED: 'proxyEnabled'
 };
