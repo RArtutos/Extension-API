@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -8,19 +8,17 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     is_admin: bool = False
+    valid_until: Optional[datetime] = None
 
 class UserUpdate(UserBase):
     password: Optional[str] = None
     is_admin: Optional[bool] = None
+    valid_until: Optional[datetime] = None
 
 class UserResponse(UserBase):
     is_admin: bool
     created_at: str
+    valid_until: Optional[str] = None
     assigned_accounts: List[int] = []
-
-class UserAccountAssignment(BaseModel):
-    user_id: str
-    account_id: int
-    max_concurrent_users: int = 1
-    active_sessions: int = 0
-    last_activity: Optional[str] = None
+    active_sessions: Dict[str, str] = {}  # domain -> last_activity_timestamp
+    is_expired: bool = False

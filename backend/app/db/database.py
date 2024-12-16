@@ -1,189 +1,63 @@
-import json
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict
-from ..core.config import settings
-from ..core.auth import get_password_hash
+# Agregar estos métodos a la clase Database
 
-class Database:
-    def __init__(self):
-        self.file_path = settings.DATA_FILE
-
-    def _read_data(self) -> dict:
-        with open(self.file_path, 'r') as f:
-            return json.load(f)
-
-    def _write_data(self, data: dict):
-        with open(self.file_path, 'w') as f:
-            json.dump(data, f, indent=2)
-
-    # User methods
-    def get_user_by_email(self, email: str) -> Optional[Dict]:
-        data = self._read_data()
-        user = next((user for user in data["users"] if user["email"] == email), None)
-        if user:
-            # Add assigned accounts
-            user["assigned_accounts"] = [
-                ua["account_id"] for ua in data["user_accounts"] 
-                if ua["user_id"] == email
-            ]
-        return user
-
-    def create_user(self, email: str, password: str, is_admin: bool = False) -> Dict:
-        data = self._read_data()
-        user = {
-            "email": email,
-            "password": get_password_hash(password),
-            "is_admin": is_admin,
-            "created_at": datetime.utcnow().isoformat(),
-            "assigned_accounts": []
-        }
-        data["users"].append(user)
-        self._write_data(data)
-        return user
-
-    def get_users(self) -> List[Dict]:
-        data = self._read_data()
-        users = data["users"]
-        # Add assigned accounts to each user
-        for user in users:
-            user["assigned_accounts"] = [
-                ua["account_id"] for ua in data["user_accounts"] 
-                if ua["user_id"] == user["email"]
-            ]
-        return users
-
-    # Account methods
-    def get_accounts(self, user_email: Optional[str] = None) -> List[Dict]:
-        data = self._read_data()
-        accounts = data["accounts"]
-        
-        if user_email:
-            user = self.get_user_by_email(user_email)
-            if not user.get("is_admin"):
-                user_accounts = [ua["account_id"] for ua in data["user_accounts"] 
-                               if ua["user_id"] == user_email]
-                accounts = [a for a in accounts if a["id"] in user_accounts]
-            
-        # Add session info to each account
-        for account in accounts:
-            account["active_sessions"] = sum(
-                ua["active_sessions"] for ua in data["user_accounts"]
-                if ua["account_id"] == account["id"]
-            )
-            account["max_concurrent_users"] = account.get("max_concurrent_users", 
-                                                        settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-            
-        return accounts
-
-    def create_account(self, account_data: Dict) -> Dict:
-        data = self._read_data()
-        
-        # Generate new ID
-        new_id = max([a.get("id", 0) for a in data["accounts"]], default=0) + 1
-        
-        account = {
-            "id": new_id,
-            "name": account_data["name"],
-            "group": account_data.get("group"),
-            "cookies": account_data.get("cookies", []),
-            "max_concurrent_users": account_data.get("max_concurrent_users", 
-                                                   settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        }
-        
-        data["accounts"].append(account)
-        self._write_data(data)
-        return account
-
-    def update_account(self, account_id: int, account_data: Dict) -> Optional[Dict]:
-        data = self._read_data()
-        account_index = next((i for i, a in enumerate(data["accounts"]) 
-                            if a["id"] == account_id), None)
-        
-        if account_index is None:
-            return None
-            
-        account = data["accounts"][account_index]
-        account.update({
-            "name": account_data["name"],
-            "group": account_data.get("group"),
-            "cookies": account_data.get("cookies", []),
-            "max_concurrent_users": account_data.get("max_concurrent_users", 
-                                                   settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        })
-        
-        data["accounts"][account_index] = account
-        self._write_data(data)
-        return account
-
-    def delete_account(self, account_id: int) -> bool:
-        data = self._read_data()
-        initial_length = len(data["accounts"])
-        
-        data["accounts"] = [a for a in data["accounts"] if a["id"] != account_id]
-        data["user_accounts"] = [ua for ua in data["user_accounts"] 
-                               if ua["account_id"] != account_id]
-        
-        if len(data["accounts"]) < initial_length:
-            self._write_data(data)
-            return True
+def update_user_session(self, email: str, account_id: int, domain: str, timestamp: str) -> bool:
+    data = self._read_data()
+    user = next((u for u in data["users"] if u["email"] == email), None)
+    if not user:
         return False
+        
+    if "active_sessions" not in user:
+        user["active_sessions"] = {}
+        
+    user["active_sessions"][domain] = timestamp
+    self._write_data(data)
+    return True
 
-    def get_session_info(self, account_id: int) -> Dict:
-        data = self._read_data()
-        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+def end_user_session(self, email: str, account_id: int, domain: str) -> bool:
+    data = self._read_data()
+    user = next((u for u in data["users"] if u["email"] == email), None)
+    if not user and "active_sessions" in user:
+        return False
         
-        if not account:
-            return {"active_sessions": 0, "max_concurrent_users": 0}
-            
-        active_sessions = sum(
-            ua["active_sessions"] for ua in data["user_accounts"]
-            if ua["account_id"] == account_id
-        )
-        
-        return {
-            "active_sessions": active_sessions,
-            "max_concurrent_users": account.get("max_concurrent_users", 
-                                              settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
-        }
+    user["active_sessions"].pop(domain, None)
+    self._write_data(data)
+    return True
 
-    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
-        data = self._read_data()
+def extend_user_validity(self, email: str, days: int) -> bool:
+    data = self._read_data()
+    user = next((u for u in data["users"] if u["email"] == email), None)
+    if not user:
+        return False
         
-        # Check if user and account exist
-        user = self.get_user_by_email(user_id)
-        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+    if days == -1:
+        user["valid_until"] = None
+    else:
+        from datetime import datetime, timedelta
+        user["valid_until"] = (datetime.utcnow() + timedelta(days=days)).isoformat()
         
-        if not user or not account:
-            return False
-            
-        # Check if assignment already exists
-        if any(ua["user_id"] == user_id and ua["account_id"] == account_id 
-               for ua in data["user_accounts"]):
-            return False
-            
-        # Create new assignment
-        assignment = {
-            "user_id": user_id,
-            "account_id": account_id,
-            "active_sessions": 0,
-            "max_concurrent_users": account.get("max_concurrent_users", 1),
-            "last_activity": None
-        }
-        
-        data["user_accounts"].append(assignment)
-        self._write_data(data)
-        return True
+    self._write_data(data)
+    return True
 
-    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
-        data = self._read_data()
-        initial_length = len(data["user_accounts"])
-        
-        data["user_accounts"] = [
-            ua for ua in data["user_accounts"]
-            if not (ua["user_id"] == user_id and ua["account_id"] == account_id)
+def get_user_by_email(self, email: str) -> Optional[Dict]:
+    data = self._read_data()
+    user = next((user for user in data["users"] if user["email"] == email), None)
+    if user:
+        # Add assigned accounts
+        user["assigned_accounts"] = [
+            ua["account_id"] for ua in data["user_accounts"] 
+            if ua["user_id"] == email
         ]
         
-        if len(data["user_accounts"]) < initial_length:
-            self._write_data(data)
-            return True
-        return False
+        # Check expiration
+        if "valid_until" in user and user["valid_until"]:
+            from datetime import datetime
+            valid_until = datetime.fromisoformat(user["valid_until"].replace('Z', '+00:00'))
+            user["is_expired"] = datetime.utcnow() > valid_until
+        else:
+            user["is_expired"] = False
+            
+        # Initialize active sessions if not present
+        if "active_sessions" not in user:
+            user["active_sessions"] = {}
+            
+    return user

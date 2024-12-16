@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
 from datetime import timedelta
 from .models.user import User
+from .utils.filters import format_datetime, timeago
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
@@ -22,6 +23,10 @@ def create_app():
     # Session configuration
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
     app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+    
+    # Register template filters
+    app.jinja_env.filters['datetime'] = format_datetime
+    app.jinja_env.filters['timeago'] = timeago
     
     login_manager.init_app(app)
     csrf.init_app(app)

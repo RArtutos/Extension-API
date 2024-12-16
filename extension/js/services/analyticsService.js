@@ -4,6 +4,7 @@ import { storage } from '../utils/storage.js';
 class AnalyticsService {
     constructor() {
         this.activeTimers = new Map();
+        this.INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutos
     }
 
     async logAccess(domain, action) {
@@ -30,9 +31,25 @@ class AnalyticsService {
 
         const timer = setTimeout(async () => {
             await this.handleInactivity(domain);
-        }, 10 * 60 * 1000); // 10 minutes
+        }, this.INACTIVITY_TIMEOUT);
 
         this.activeTimers.set(domain, timer);
+        this.updateLastActivity(domain);
+    }
+
+    async updateLastActivity(domain) {
+        const currentAccount = await storage.get('currentAccount');
+        if (!currentAccount) return;
+
+        try {
+            await api.updateActivity({
+                accountId: currentAccount.id,
+                domain: domain,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Error updating activity:', error);
+        }
     }
 
     async handleInactivity(domain) {
@@ -54,6 +71,16 @@ class AnalyticsService {
 
         this.activeTimers.delete(domain);
         await this.logAccess(domain, 'timeout');
+        
+        // Notify the backend about session end
+        try {
+            await api.endSession({
+                accountId: currentAccount.id,
+                domain: domain
+            });
+        } catch (error) {
+            console.error('Error ending session:', error);
+        }
     }
 
     resetTimer(domain) {
