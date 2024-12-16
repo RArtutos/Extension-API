@@ -1,41 +1,23 @@
-import requests
 from typing import List, Dict
-from flask_login import current_user
-from ..config import Config
+from .base_service import BaseService
 
-class AdminService:
+class AdminService(BaseService):
     def __init__(self):
-        self.api_url = f"{Config.API_URL}/api/admin"
+        super().__init__('/api/admin')
 
     def get_users(self) -> List[Dict]:
-        response = requests.get(
-            f"{self.api_url}/users",
-            headers={'Authorization': f'Bearer {current_user.token}'}
-        )
-        response.raise_for_status()
-        return response.json()
+        result = self._handle_request('get', f"{self.endpoint}/users")
+        return result if result else []
 
-    def create_user(self, data: Dict) -> Dict:
-        response = requests.post(
-            f"{self.api_url}/users",
-            json=data,
-            headers={'Authorization': f'Bearer {current_user.token}'}
-        )
-        response.raise_for_status()
-        return response.json()
+    def create_user(self, data: Dict) -> Optional[Dict]:
+        return self._handle_request('post', f"{self.endpoint}/users", data)
 
     def get_analytics(self) -> Dict:
-        response = requests.get(
-            f"{self.api_url}/analytics",
-            headers={'Authorization': f'Bearer {current_user.token}'}
-        )
-        response.raise_for_status()
-        return response.json()
+        result = self._handle_request('get', f"{self.endpoint}/analytics")
+        return result if result else {'accounts': [], 'recent_activity': []}
 
-    def assign_account_to_user(self, user_id: str, account_id: int) -> Dict:
-        response = requests.post(
-            f"{self.api_url}/users/{user_id}/accounts/{account_id}",
-            headers={'Authorization': f'Bearer {current_user.token}'}
+    def assign_account_to_user(self, user_id: str, account_id: int) -> Optional[Dict]:
+        return self._handle_request(
+            'post', 
+            f"{self.endpoint}/users/{user_id}/accounts/{account_id}"
         )
-        response.raise_for_status()
-        return response.json()

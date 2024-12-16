@@ -1,47 +1,32 @@
-import requests
 from typing import List, Dict, Optional
-from flask_login import current_user
-from ..config import Config
+from .base_service import BaseService
 
-class AccountService:
+class AccountService(BaseService):
     def __init__(self):
-        self.api_url = f"{Config.API_URL}/api/accounts"
+        super().__init__('/api/accounts')
     
     def get_all(self) -> List[Dict]:
-        try:
-            response = requests.get(
-                self.api_url,
-                headers={'Authorization': f'Bearer {current_user.token}'}
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Error fetching accounts: {str(e)}")
-            return []
+        result = self._handle_request('get', self.endpoint)
+        return result if result else []
+    
+    def create(self, data: Dict) -> Optional[Dict]:
+        return self._handle_request('post', self.endpoint, data)
+    
+    def get_by_id(self, account_id: int) -> Optional[Dict]:
+        return self._handle_request('get', f"{self.endpoint}/{account_id}")
+
+    def update(self, account_id: int, data: Dict) -> Optional[Dict]:
+        return self._handle_request('put', f"{self.endpoint}/{account_id}", data)
+
+    def delete(self, account_id: int) -> bool:
+        result = self._handle_request('delete', f"{self.endpoint}/{account_id}")
+        return bool(result)
     
     def get_session_info(self, account_id: int) -> Dict:
-        try:
-            response = requests.get(
-                f"{self.api_url}/{account_id}/session",
-                headers={'Authorization': f'Bearer {current_user.token}'}
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Error fetching session info: {str(e)}")
-            return {'active_sessions': 0, 'max_concurrent_users': 0}
+        result = self._handle_request('get', f"{self.endpoint}/{account_id}/session")
+        return result if result else {'active_sessions': 0, 'max_concurrent_users': 0}
 
     def get_analytics(self, account_id: Optional[int] = None) -> List[Dict]:
-        try:
-            url = f"{Config.API_URL}/api/admin/analytics"
-            if account_id:
-                url += f"?account_id={account_id}"
-            response = requests.get(
-                url,
-                headers={'Authorization': f'Bearer {current_user.token}'}
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Error fetching analytics: {str(e)}")
-            return []
+        params = {'account_id': account_id} if account_id else None
+        result = self._handle_request('get', '/api/admin/analytics', params)
+        return result if result else []

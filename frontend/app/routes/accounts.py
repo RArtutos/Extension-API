@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from ..services.accounts import AccountService
 from ..forms.account import AccountForm
 import json
@@ -24,9 +24,12 @@ def create():
     if form.validate_on_submit():
         try:
             account_data = form.get_data()
-            account_service.create(account_data)
-            flash('Account created successfully', 'success')
-            return redirect(url_for('accounts.list'))
+            result = account_service.create(account_data)
+            if result:
+                flash('Account created successfully', 'success')
+                return redirect(url_for('accounts.list'))
+            else:
+                flash('Failed to create account', 'error')
         except Exception as e:
             flash(str(e), 'error')
     
@@ -44,18 +47,14 @@ def edit(account_id):
     if request.method == 'GET':
         form.name.data = account['name']
         form.group.data = account.get('group', '')
+        form.max_concurrent_users.data = account.get('max_concurrent_users', 1)
         
         # Get domain from first cookie
         cookies = account.get('cookies', [])
         if cookies:
             form.domain.data = cookies[0].get('domain', '')
-        
-        # Convert cookies to string format
-        cookie_parts = []
-        for cookie in cookies:
-            if cookie.get('name') and cookie.get('value'):
-                cookie_parts.append(f"{cookie['name']}={cookie['value']}")
-        form.cookies.data = '; '.join(cookie_parts)
+            if cookies[0].get('name') == 'header_cookies':
+                form.cookies.data = cookies[0].get('value', '')
     
     if form.validate_on_submit():
         try:

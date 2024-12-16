@@ -1,12 +1,15 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField
-from wtforms.validators import DataRequired, ValidationError
+from wtforms import StringField, TextAreaField, IntegerField
+from wtforms.validators import DataRequired, NumberRange, ValidationError
 
 class AccountForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
     group = StringField('Group')
     domain = StringField('Domain', validators=[DataRequired()])
     cookies = TextAreaField('Cookies')
+    max_concurrent_users = IntegerField('Maximum Concurrent Users', 
+                                      validators=[DataRequired(), NumberRange(min=1)],
+                                      default=1)
 
     def validate_domain(self, field):
         if not field.data:
@@ -43,5 +46,6 @@ class AccountForm(FlaskForm):
         return {
             'name': self.name.data,
             'group': self.group.data or None,
-            'cookies': cookies
+            'cookies': cookies,
+            'max_concurrent_users': self.max_concurrent_users.data
         }

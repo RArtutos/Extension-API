@@ -23,10 +23,6 @@ class AuthService:
             if response.status_code != 200:
                 return None, "Invalid credentials"
                 
-            data = response.json()
-            if not data.get('access_token'):
-                return None, "Invalid response from server"
-            
             # Si llegamos aquí, la autenticación fue exitosa
             user = User(
                 email=email,
@@ -40,7 +36,6 @@ class AuthService:
             return None, f"Login error: {str(e)}"
 
     def get_user(self, email: str) -> Optional[User]:
-        # Simplemente devolvemos un usuario con el email proporcionado
         if not email:
             return None
         return User(
