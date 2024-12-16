@@ -101,6 +101,39 @@ async function loadAccounts() {
   }
 }
 
+async function setCookie(domain, name, value) {
+  const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+  const url = `https://${cleanDomain}`;
+  
+  try {
+    await chrome.cookies.set({
+      url: url,
+      name: name,
+      value: value,
+      path: '/',
+      secure: true,
+      sameSite: 'lax',
+      domain: domain // Keep the original domain with dot if present
+    });
+  } catch (error) {
+    // If first attempt fails, try with more permissive settings
+    try {
+      await chrome.cookies.set({
+        url: url,
+        name: name,
+        value: value,
+        path: '/',
+        secure: false,
+        sameSite: 'no_restriction',
+        domain: cleanDomain // Try without the leading dot
+      });
+    } catch (retryError) {
+      console.error(`Error setting cookie ${name}:`, retryError);
+      // Don't throw the error to continue with other cookies
+    }
+  }
+}
+
 async function switchAccount(account) {
   try {
     currentAccount = account;
@@ -113,10 +146,15 @@ async function switchAccount(account) {
       // First remove existing cookies
       const existingCookies = await chrome.cookies.getAll({ domain });
       for (const existing of existingCookies) {
-        await chrome.cookies.remove({
-          url: `https://${domain}`,
-          name: existing.name
-        });
+        try {
+          const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+          await chrome.cookies.remove({
+            url: `https://${cleanDomain}`,
+            name: existing.name
+          });
+        } catch (error) {
+          console.warn(`Error removing cookie ${existing.name}:`, error);
+        }
       }
 
       // Process header string cookies
@@ -136,19 +174,8 @@ async function switchAccount(account) {
 
           if (!name || !value) continue;
 
-          try {
-            await chrome.cookies.set({
-              url: `https://${domain}`,
-              domain: domain,
-              name: name,
-              value: value,
-              path: '/',
-              secure: true,
-              sameSite: 'no_restriction'
-            });
-          } catch (error) {
-            console.error(`Error setting cookie ${name}:`, error);
-          }
+          // Set each cookie individually
+          await setCookie(domain, name, value);
         }
       }
     }

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Account Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,19 +13,42 @@
       <input type="email" id="email" placeholder="Email">
       <input type="password" id="password" placeholder="Password">
       <button id="login-btn">Login</button>
+      <div id="login-error" class="error-message hidden"></div>
     </div>
     
     <div id="account-manager" class="container hidden">
-      <h2>Account Manager</h2>
+      <div class="header">
+        <h2>Accounts</h2>
+        <div class="session-info" id="global-session-info"></div>
+      </div>
+      
       <div id="accounts-list"></div>
+      
       <div class="proxy-section">
         <label>
           <input type="checkbox" id="use-proxy"> Use Proxy
         </label>
+        <div id="proxy-status" class="status-text"></div>
       </div>
+
+      <button id="view-stats" class="stats-button">View Statistics</button>
       <button id="logout-btn">Logout</button>
     </div>
+
+    <!-- Stats Modal -->
+    <div id="stats-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Usage Statistics</h3>
+          <button class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="stats-content"></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <script src="popup.js"></script>
+
+  <script type="module" src="js/popup.js"></script>
 </body>
 </html>

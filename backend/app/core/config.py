@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = "artutos123"
     DATA_FILE: str = "data/db.json"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    COOKIE_INACTIVITY_TIMEOUT: int = 600  # 10 minutes
+    MAX_CONCURRENT_USERS_PER_ACCOUNT: int = 3
 
     def init_data_file(self):
         data_file = Path(self.DATA_FILE)
@@ -25,7 +27,9 @@ class Settings(BaseSettings):
                     }
                 ],
                 "accounts": [],
-                "proxies": []
+                "proxies": [],
+                "user_accounts": [],
+                "analytics": []
             }
             with open(data_file, 'w') as f:
                 json.dump(initial_data, f, indent=2)

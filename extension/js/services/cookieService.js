@@ -1,66 +1,73 @@
-import { parseHeaderString } from '../utils/cookieParser.js';
+class CookieService {
+  async setAccountCookies(account) {
+    for (const cookie of account.cookies) {
+      const domain = cookie.domain;
+      
+      // Remove existing cookies first
+      await this.removeAllCookiesForDomain(domain);
 
-export class CookieService {
-  async setCookie(domain, name, value, options = {}) {
-    const urlDomain = `https://${domain.replace(/^\./, '')}`;
-    
-    const cookieData = {
-      url: urlDomain,
-      name,
-      value,
-      path: '/',
-      domain: domain,
-      secure: urlDomain.startsWith('https://'),
-      sameSite: 'lax',
-      httpOnly: false,
-      ...options
-    };
-
-    try {
-      await chrome.cookies.set(cookieData);
-    } catch (error) {
-      console.warn(`Error setting cookie ${name}:`, error);
-      // Try alternative settings
-      try {
-        await chrome.cookies.set({
-          ...cookieData,
-          domain: domain.replace(/^\./, ''),
-          secure: false
-        });
-      } catch (retryError) {
-        console.error(`Failed to set cookie ${name} after retry:`, retryError);
-        throw retryError;
+      // Set new cookies
+      if (cookie.name === 'header_cookies') {
+        await this.setHeaderCookies(domain, cookie.value);
       }
     }
   }
 
-  async removeCookie(domain, name, storeId = null) {
-    const urlDomain = `https://${domain.replace(/^\./, '')}`;
-    const removeData = { url: urlDomain, name };
-    if (storeId) removeData.storeId = storeId;
-    
-    try {
-      await chrome.cookies.remove(removeData);
-    } catch (error) {
-      console.error(`Error removing cookie ${name}:`, error);
-      throw error;
+  async setHeaderCookies(domain, cookieString) {
+    const cookies = this.parseHeaderString(cookieString);
+    for (const cookie of cookies) {
+      await this.setCookie(domain, cookie.name, cookie.value);
     }
   }
 
-  async removeAllCookies(domain) {
-    const existingCookies = await chrome.cookies.getAll({ domain });
-    const promises = existingCookies.map(cookie => 
-      this.removeCookie(domain, cookie.name, cookie.storeId)
-    );
-    await Promise.allSettled(promises);
+  async setCookie(domain, name, value) {
+    const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+    const url = `https://${cleanDomain}`;
+    
+    try {
+      await chrome.cookies.set({
+        url,
+        name,
+        value,
+        domain,
+        path: '/',
+        secure: true,
+        sameSite: 'lax'
+      });
+    } catch (error) {
+      console.warn(`Error setting cookie ${name}:`, error);
+    }
   }
 
-  async processHeaderString(domain, cookieString) {
-    const cookies = parseHeaderString(cookieString);
-    const promises = cookies.map(({ name, value }) => 
-      this.setCookie(domain, name, value)
-    );
-    await Promise.allSettled(promises);
+  async removeAllCookiesForDomain(domain) {
+    const cookies = await chrome.cookies.getAll({ domain });
+    for (const cookie of cookies) {
+      try {
+        const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+        await chrome.cookies.remove({
+          url: `https://${cleanDomain}`,
+          name: cookie.name
+        });
+      } catch (error) {
+        console.warn(`Error removing cookie ${cookie.name}:`, error);
+      }
+    }
+  }
+
+  parseHeaderString(cookieString) {
+    if (!cookieString) return [];
+    
+    const cookies = [];
+    const pairs = cookieString.split(';');
+    
+    for (const pair of pairs) {
+      const [name, value] = pair.trim().split('=');
+      if (name && value) {
+        cookies.push({ name: name.trim(), value: value.trim() });
+      }
+    }
+    
+    return cookies;
   }
 }
 

@@ -1,32 +1,63 @@
-import { accountManager } from './accountManager.js';
-import { storage } from './storage.js';
-import { api } from './api.js';
+import { accountService } from './services/accountService.js';
+import { analyticsService } from './services/analyticsService.js';
+import { ui } from './utils/ui.js';
+import { storage } from './utils/storage.js';
+
+// Initialize the app
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = await storage.get('token');
+  if (token) {
+    ui.showAccountManager();
+    await loadAccounts();
+    await updateGlobalSessionInfo();
+  } else {
+    ui.showLoginForm();
+  }
+});
 
 // Event Listeners
-document.getElementById('login-btn').addEventListener('click', async () => {
+document.getElementById('login-btn').addEventListener('click', handleLogin);
+document.getElementById('logout-btn').addEventListener('click', handleLogout);
+document.getElementById('use-proxy').addEventListener('change', handleProxyToggle);
+document.getElementById('view-stats').addEventListener('click', showStats);
+
+async function handleLogin() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
   try {
-    const data = await api.login(email, password);
-    if (data.access_token) {
-      await storage.set('token', data.access_token);
-      accountManager.init();
-    }
+    await accountService.login(email, password);
+    ui.showAccountManager();
+    await loadAccounts();
   } catch (error) {
-    console.error('Login failed:', error);
-    ui.showError('Login failed. Please try again.');
+    ui.showError('Login failed: ' + error.message);
   }
-});
+}
 
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  await storage.remove(['token', 'currentAccount']);
+async function handleLogout() {
+  await accountService.logout();
   ui.showLoginForm();
-});
+}
 
-document.getElementById('use-proxy').addEventListener('change', (e) => {
-  accountManager.setProxyEnabled(e.target.checked);
-});
+async function loadAccounts() {
+  try {
+    const accounts = await accountService.getAccounts();
+    const currentAccount = await accountService.getCurrentAccount();
+    await ui.updateAccountsList(accounts, currentAccount);
+  } catch (error) {
+    ui.showError('Failed to load accounts: ' + error.message);
+  }
+}
 
-// Iniciar la aplicación
-accountManager.init();
+async function updateGlobalSessionInfo() {
+  const stats = await analyticsService.getGlobalStats();
+  ui.updateGlobalSessionInfo(stats);
+}
+
+async function showStats() {
+  const stats = await analyticsService.getDetailedStats();
+  ui.showStatsModal(stats);
+}
+
+// Update session info periodically
+setInterval(updateGlobalSessionInfo, 30000); // Every 30 seconds

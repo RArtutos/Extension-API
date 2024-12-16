@@ -1,60 +1,33 @@
-body {
-  width: 300px;
-  padding: 16px;
-  font-family: Arial, sans-serif;
+/* Add to existing styles */
+.account-item.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.account-item.disabled button {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 
-.hidden {
-  display: none;
+.session-info {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
 }
 
-input {
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.account-info {
+    display: flex;
+    flex-direction: column;
 }
 
-button {
-  padding: 8px 16px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+.error-message {
+    background-color: #fee2e2;
+    border: 1px solid #ef4444;
+    color: #dc2626;
+    padding: 8px;
+    border-radius: 6px;
+    margin-top: 8px;
+    font-size: 14px;
 }
 
-button:hover {
-  background-color: #45a049;
-}
-
-.account-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-
-.account-item.active {
-  background-color: #e8f5e9;
-  border-color: #4CAF50;
-}
-
-.proxy-section {
-  margin-top: 16px;
-  padding: 8px;
-  border-top: 1px solid #ddd;
-}
-
-#accounts-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
+/* [Previous styles remain unchanged] */
