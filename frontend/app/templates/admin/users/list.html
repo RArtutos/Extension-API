@@ -15,6 +15,7 @@
                         <th>Email</th>
                         <th>Role</th>
                         <th>Assigned Accounts</th>
+                        <th>Expires</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -24,6 +25,13 @@
                         <td>{{ user.email }}</td>
                         <td>{{ 'Admin' if user.is_admin else 'User' }}</td>
                         <td>{{ user.assigned_accounts|length }}</td>
+                        <td>
+                            {% if user.expires_at %}
+                                {{ user.expires_at|format_datetime }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
                         <td>
                             <div class="btn-group">
                                 <a href="{{ url_for('admin.user_accounts', user_id=user.email) }}" 

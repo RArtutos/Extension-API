@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional
+from datetime import datetime, timedelta
 from .base_service import BaseService
 
 class AdminService(BaseService):
@@ -10,6 +11,11 @@ class AdminService(BaseService):
         return result if result else []
 
     def create_user(self, data: Dict) -> Optional[Dict]:
+        # Add expiration date if valid_days is provided
+        if 'valid_days' in data:
+            expiration_date = datetime.utcnow() + timedelta(days=data['valid_days'])
+            data['expires_at'] = expiration_date.isoformat()
+            
         return self._handle_request('post', f"{self.endpoint}/users", data)
 
     def get_user(self, user_id: str) -> Optional[Dict]:

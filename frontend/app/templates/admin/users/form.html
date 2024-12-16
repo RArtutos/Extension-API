@@ -33,6 +33,18 @@
                         {% endif %}
                     </div>
                     <div class="mb-3">
+                        {{ form.valid_days.label(class="form-label") }}
+                        {{ form.valid_days(class="form-control", type="number", min="1") }}
+                        {% if form.valid_days.errors %}
+                            <div class="text-danger">
+                                {% for error in form.valid_days.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">{{ form.valid_days.description }}</small>
+                    </div>
+                    <div class="mb-3">
                         <div class="form-check">
                             {{ form.is_admin(class="form-check-input") }}
                             {{ form.is_admin.label(class="form-check-label") }}

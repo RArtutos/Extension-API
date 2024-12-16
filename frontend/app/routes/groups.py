@@ -3,10 +3,10 @@ from flask_login import login_required
 from ..core.auth import admin_required
 from ..services.groups import GroupService
 
-bp = Blueprint('groups', __name__, url_prefix='/api/groups')
+bp = Blueprint('groups', __name__)
 group_service = GroupService()
 
-@bp.route('/', methods=['GET'])
+@bp.route('/api/groups', methods=['GET'])
 @login_required
 def get_groups():
     try:
@@ -15,7 +15,7 @@ def get_groups():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bp.route('/', methods=['POST'])
+@bp.route('/api/groups/', methods=['POST'])
 @login_required
 @admin_required
 def create_group():
@@ -31,7 +31,7 @@ def create_group():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bp.route('/<int:group_id>/accounts/<int:account_id>', methods=['POST'])
+@bp.route('/api/groups/<int:group_id>/accounts/<int:account_id>', methods=['POST'])
 @login_required
 @admin_required
 def assign_account(group_id: int, account_id: int):
