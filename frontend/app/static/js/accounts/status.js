@@ -1,8 +1,8 @@
-// Real-time account status management
 export class AccountStatusManager {
     constructor() {
         this.updateInterval = null;
         this.statusElements = new Map();
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     }
 
     init() {
@@ -28,9 +28,17 @@ export class AccountStatusManager {
 
     async updateAllStatuses() {
         try {
-            const response = await fetch('/api/accounts/status');
-            const accounts = await response.json();
+            const response = await fetch('/api/accounts/status', {
+                headers: {
+                    'X-CSRFToken': this.csrfToken
+                }
+            });
             
+            if (!response.ok) {
+                throw new Error('Failed to fetch account status');
+            }
+            
+            const accounts = await response.json();
             accounts.forEach(account => this.updateAccountStatus(account));
         } catch (error) {
             console.error('Error updating account statuses:', error);
@@ -54,7 +62,7 @@ export class AccountStatusManager {
     }
 
     renderActiveUsers(users) {
-        if (!users.length) return '<p class="text-muted">No active users</p>';
+        if (!users?.length) return '<p class="text-muted">No active users</p>';
 
         return `
             <ul class="list-unstyled mb-0">

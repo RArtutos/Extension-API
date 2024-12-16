@@ -12,6 +12,22 @@ db = Database()
 async def get_accounts(current_user: dict = Depends(get_current_user)):
     return db.get_accounts(current_user["email"])
 
+@router.post("/", response_model=Account)
+async def create_account(account: AccountCreate, current_user: dict = Depends(get_current_user)):
+    try:
+        # Add validation for required fields
+        if not account.name:
+            raise HTTPException(status_code=400, detail="Account name is required")
+            
+        # Create the account
+        new_account = db.create_account(account.dict())
+        if not new_account:
+            raise HTTPException(status_code=400, detail="Failed to create account")
+            
+        return new_account
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/{account_id}/status", response_model=AccountStatus)
 async def get_account_status(account_id: int, current_user: dict = Depends(get_current_user)):
     accounts = db.get_accounts(current_user["email"])
@@ -57,5 +73,3 @@ async def update_activity(
             detail="Could not update activity"
         )
     return {"message": "Activity updated successfully"}
-
-# ... (rest of the routes remain unchanged)

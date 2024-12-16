@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from ..services.accounts import AccountService
 from ..forms.account import AccountForm
-import json
 
 bp = Blueprint('accounts', __name__)
 account_service = AccountService()
@@ -32,8 +31,18 @@ def create():
                 flash('Failed to create account', 'error')
         except Exception as e:
             flash(str(e), 'error')
+            return render_template('accounts/form.html', form=form, is_edit=False)
     
     return render_template('accounts/form.html', form=form, is_edit=False)
+
+@bp.route('/api/accounts/status')
+@login_required
+def get_accounts_status():
+    try:
+        accounts = account_service.get_all()
+        return jsonify(accounts)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @bp.route('/<int:account_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -49,7 +58,6 @@ def edit(account_id):
         form.group.data = account.get('group', '')
         form.max_concurrent_users.data = account.get('max_concurrent_users', 1)
         
-        # Get domain from first cookie
         cookies = account.get('cookies', [])
         if cookies:
             form.domain.data = cookies[0].get('domain', '')
@@ -59,9 +67,12 @@ def edit(account_id):
     if form.validate_on_submit():
         try:
             account_data = form.get_data()
-            account_service.update(account_id, account_data)
-            flash('Account updated successfully', 'success')
-            return redirect(url_for('accounts.list'))
+            result = account_service.update(account_id, account_data)
+            if result:
+                flash('Account updated successfully', 'success')
+                return redirect(url_for('accounts.list'))
+            else:
+                flash('Failed to update account', 'error')
         except Exception as e:
             flash(str(e), 'error')
     

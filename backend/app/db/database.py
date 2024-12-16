@@ -259,3 +259,39 @@ def get_hourly_activity(self, start_time: datetime) -> List[Dict]:
                 hours[hour_index]["count"] += 1
     
     return hours
+def create_account(self, account_data: dict) -> Optional[dict]:
+    data = self._read_data()
+    
+    # Generate new ID
+    new_id = max([a.get("id", 0) for a in data["accounts"]], default=0) + 1
+    
+    account = {
+        "id": new_id,
+        "name": account_data["name"],
+        "group": account_data.get("group"),
+        "cookies": account_data.get("cookies", []),
+        "max_concurrent_users": account_data.get("max_concurrent_users", 1),
+        "active_sessions": 0,
+        "active_users": []
+    }
+    
+    data["accounts"].append(account)
+    self._write_data(data)
+    return account
+
+def update_account(self, account_id: int, account_data: dict) -> Optional[dict]:
+    data = self._read_data()
+    account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+    
+    if not account:
+        return None
+        
+    account.update({
+        "name": account_data["name"],
+        "group": account_data.get("group"),
+        "cookies": account_data.get("cookies", []),
+        "max_concurrent_users": account_data.get("max_concurrent_users", 1)
+    })
+    
+    self._write_data(data)
+    return account

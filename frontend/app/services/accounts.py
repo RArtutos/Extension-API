@@ -6,22 +6,30 @@ class AccountService(BaseService):
         super().__init__('/api/accounts')
     
     def get_all(self) -> List[Dict]:
-        result = self._handle_request('get', self.endpoint + '/')
+        result = self._handle_request('get', self.endpoint)
         return result if result else []
     
     def create(self, data: Dict) -> Optional[Dict]:
-        return self._handle_request('post', self.endpoint + '/', data)
+        try:
+            return self._handle_request('post', self.endpoint, data)
+        except Exception as e:
+            print(f"Error creating account: {str(e)}")
+            raise
     
     def get_by_id(self, account_id: int) -> Optional[Dict]:
         return self._handle_request('get', f"{self.endpoint}/{account_id}")
 
     def update(self, account_id: int, data: Dict) -> Optional[Dict]:
-        return self._handle_request('put', f"{self.endpoint}/{account_id}", data)
+        try:
+            return self._handle_request('put', f"{self.endpoint}/{account_id}", data)
+        except Exception as e:
+            print(f"Error updating account: {str(e)}")
+            raise
 
     def delete(self, account_id: int) -> bool:
-        result = self._handle_request('delete', f"{self.endpoint}/{account_id}")
-        return bool(result)
-    
-    def get_session_info(self, account_id: int) -> Dict:
-        result = self._handle_request('get', f"{self.endpoint}/{account_id}/session")
-        return result if result else {'active_sessions': 0, 'max_concurrent_users': 0}
+        try:
+            result = self._handle_request('delete', f"{self.endpoint}/{account_id}")
+            return bool(result)
+        except Exception as e:
+            print(f"Error deleting account: {str(e)}")
+            raise

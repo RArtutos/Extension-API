@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth, accounts, proxies, admin
+from .routers import auth, accounts, proxies, admin, groups
 from .core.config import settings
 
 app = FastAPI(title="Account Manager API")
@@ -18,6 +18,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(accounts.router, prefix="/api/accounts", tags=["accounts"])
 app.include_router(proxies.router, prefix="/api/proxies", tags=["proxies"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(groups.router, prefix="/api/groups", tags=["groups"])
 
 @app.on_event("startup")
 async def startup_event():
