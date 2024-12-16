@@ -30,6 +30,32 @@ class Database:
 
         self._write_data(data)
 
+    # User methods
+    def get_user_by_email(self, email: str) -> Optional[Dict]:
+        data = self._read_data()
+        return next((user for user in data["users"] if user["email"] == email), None)
+
+    def create_user(self, email: str, password: str, is_admin: bool = False) -> Dict:
+        data = self._read_data()
+        
+        if any(user["email"] == email for user in data["users"]):
+            raise ValueError("Email already registered")
+            
+        user = {
+            "email": email,
+            "password": get_password_hash(password),
+            "is_admin": is_admin,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        data["users"].append(user)
+        self._write_data(data)
+        return user
+
+    def get_users(self) -> List[Dict]:
+        data = self._read_data()
+        return data["users"]
+
     # Group methods
     def get_groups(self) -> List[Dict]:
         data = self._read_data()
@@ -154,4 +180,135 @@ class Database:
         self._write_data(data)
         return account
 
-    # Rest of the methods remain unchanged...
+    def increment_session_count(self, user_id: str, account_id: int) -> bool:
+        data = self._read_data()
+        account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+        
+        if not account:
+            return False
+            
+        user_account = next(
+            (ua for ua in data["user_accounts"] 
+             if ua["user_id"] == user_id and ua["account_id"] == account_id),
+            None
+        )
+        
+        if not user_account:
+            user_account = {
+                "user_id": user_id,
+                "account_id": account_id,
+                "active_sessions": 0,
+                "last_activity": None
+            }
+            data["user_accounts"].append(user_account)
+            
+        if user_account["active_sessions"] >= account["max_concurrent_users"]:
+            return False
+            
+        user_account["active_sessions"] += 1
+        user_account["last_activity"] = datetime.utcnow().isoformat()
+        
+        self._write_data(data)
+        return True
+
+    def decrement_session_count(self, user_id: str, account_id: int) -> bool:
+        data = self._read_data()
+        user_account = next(
+            (ua for ua in data["user_accounts"] 
+             if ua["user_id"] == user_id and ua["account_id"] == account_id),
+            None
+        )
+        
+        if not user_account or user_account["active_sessions"] <= 0:
+            return False
+            
+        user_account["active_sessions"] -= 1
+        if user_account["active_sessions"] == 0:
+            user_account["last_activity"] = None
+            
+        self._write_data(data)
+        return True
+
+    def update_user_activity(self, user_id: str, account_id: int, domain: str) -> bool:
+        data = self._read_data()
+        user_account = next(
+            (ua for ua in data["user_accounts"] 
+             if ua["user_id"] == user_id and ua["account_id"] == account_id),
+            None
+        )
+        
+        if not user_account or user_account["active_sessions"] <= 0:
+            return False
+            
+        user_account["last_activity"] = datetime.utcnow().isoformat()
+        
+        # Add analytics entry
+        if "analytics" not in data:
+            data["analytics"] = []
+            
+        data["analytics"].append({
+            "user_id": user_id,
+            "account_id": account_id,
+            "domain": domain,
+            "timestamp": datetime.utcnow().isoformat(),
+            "action": "access"
+        })
+        
+        self._write_data(data)
+        return True
+
+    def get_analytics(self, start_time: datetime) -> Dict:
+        data = self._read_data()
+        current_time = datetime.utcnow()
+        
+        # Filter recent activity
+        recent_activity = [
+            a for a in data.get("analytics", [])
+            if datetime.fromisoformat(a["timestamp"]) > start_time
+        ]
+        
+        # Get active accounts and users
+        active_accounts = len([
+            a for a in data["accounts"]
+            if any(ua["account_id"] == a["id"] and ua["active_sessions"] > 0
+                  for ua in data["user_accounts"])
+        ])
+        
+        active_users = len(set(
+            ua["user_id"] for ua in data["user_accounts"]
+            if ua["active_sessions"] > 0
+        ))
+        
+        # Calculate total sessions
+        total_sessions = sum(
+            ua["active_sessions"] for ua in data["user_accounts"]
+        )
+        
+        return {
+            "total_sessions": total_sessions,
+            "active_accounts": active_accounts,
+            "active_users": active_users,
+            "recent_activity": sorted(
+                recent_activity,
+                key=lambda x: x["timestamp"],
+                reverse=True
+            )[:50]  # Last 50 activities
+        }
+
+    def get_hourly_activity(self, start_time: datetime) -> List[Dict]:
+        data = self._read_data()
+        activities = data.get("analytics", [])
+        
+        # Group activities by hour
+        hourly_counts = {}
+        for activity in activities:
+            timestamp = datetime.fromisoformat(activity["timestamp"])
+            if timestamp > start_time:
+                hour = timestamp.replace(minute=0, second=0, microsecond=0)
+                hourly_counts[hour] = hourly_counts.get(hour, 0) + 1
+                
+        # Convert to list and sort
+        return [
+            {"hour": hour.isoformat(), "count": count}
+            for hour, count in sorted(hourly_counts.items())
+        ]

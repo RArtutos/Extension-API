@@ -1,41 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
-from ..db.database import Database
+from ..db.repositories.account_repository import AccountRepository
 from ..schemas.account import Account, AccountCreate, AccountStatus
 from ..core.auth import get_current_user
 from ..core.config import settings
 
 router = APIRouter()
-db = Database()
+account_repository = AccountRepository()
 
 @router.get("/", response_model=List[Account])
 async def get_accounts(current_user: dict = Depends(get_current_user)):
-    return db.get_accounts(current_user["email"])
+    return account_repository.get_all(current_user["email"])
 
 @router.post("/", response_model=Account)
 async def create_account(account: AccountCreate, current_user: dict = Depends(get_current_user)):
     try:
-        # Add validation for required fields
         if not account.name:
             raise HTTPException(status_code=400, detail="Account name is required")
-            
-        # Create the account
-        new_account = db.create_account(account.dict())
+        new_account = account_repository.create(account.dict())
         if not new_account:
             raise HTTPException(status_code=400, detail="Failed to create account")
-            
         return new_account
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/{account_id}/status", response_model=AccountStatus)
 async def get_account_status(account_id: int, current_user: dict = Depends(get_current_user)):
-    accounts = db.get_accounts(current_user["email"])
-    account = next((a for a in accounts if a["id"] == account_id), None)
-    
+    account = account_repository.get_by_id(account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-        
     return {
         "id": account["id"],
         "active_sessions": account["active_sessions"],
@@ -45,7 +38,7 @@ async def get_account_status(account_id: int, current_user: dict = Depends(get_c
 
 @router.post("/session/{account_id}/start")
 async def start_session(account_id: int, current_user: dict = Depends(get_current_user)):
-    if not db.increment_session_count(current_user["email"], account_id):
+    if not account_repository.increment_session_count(current_user["email"], account_id):
         raise HTTPException(
             status_code=400,
             detail="Could not start session. Maximum concurrent users reached."
@@ -54,7 +47,7 @@ async def start_session(account_id: int, current_user: dict = Depends(get_curren
 
 @router.post("/session/{account_id}/end")
 async def end_session(account_id: int, current_user: dict = Depends(get_current_user)):
-    if not db.decrement_session_count(current_user["email"], account_id):
+    if not account_repository.decrement_session_count(current_user["email"], account_id):
         raise HTTPException(
             status_code=400,
             detail="Could not end session"
@@ -67,7 +60,7 @@ async def update_activity(
     domain: str,
     current_user: dict = Depends(get_current_user)
 ):
-    if not db.update_user_activity(current_user["email"], account_id, domain):
+    if not account_repository.update_user_activity(current_user["email"], account_id, domain):
         raise HTTPException(
             status_code=400,
             detail="Could not update activity"

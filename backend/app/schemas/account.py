@@ -10,8 +10,9 @@ class Cookie(BaseModel):
 
 class AccountBase(BaseModel):
     name: str
-    group: Optional[str] = None
+    group: Optional[int] = None  # Changed to int to match group_id
     cookies: List[Cookie] = Field(default_factory=list)
+    max_concurrent_users: int = 1  # Default to 1
 
 class AccountCreate(AccountBase):
     pass
@@ -30,5 +31,6 @@ class AccountStatus(BaseModel):
 class Account(AccountBase):
     id: int
     active_sessions: int = 0
-    max_concurrent_users: int
+    max_concurrent_users: int = 1  # Default to 1
     active_users: List[ActiveUser] = Field(default_factory=list)
+    group: Optional[str] = None  # Group name for display

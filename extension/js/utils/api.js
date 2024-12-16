@@ -59,12 +59,14 @@ class Api {
         const response = await fetch(`${API_URL}/api/accounts/session/${accountId}/start`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token.token}`
+                'Authorization': `Bearer ${token.token}`,
+                'Content-Type': 'application/json'
             }
         });
 
         if (!response.ok) {
-            throw new Error('Failed to start session');
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to start session');
         }
 
         return response.json();
@@ -79,7 +81,8 @@ class Api {
         const response = await fetch(`${API_URL}/api/accounts/session/${accountId}/end`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token.token}`
+                'Authorization': `Bearer ${token.token}`,
+                'Content-Type': 'application/json'
             }
         });
 
@@ -96,11 +99,13 @@ class Api {
             throw new Error('No authentication token');
         }
 
-        const response = await fetch(`${API_URL}/api/accounts/activity/${accountId}?domain=${encodeURIComponent(domain)}`, {
+        const response = await fetch(`${API_URL}/api/accounts/activity/${accountId}`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token.token}`
-            }
+                'Authorization': `Bearer ${token.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ domain })
         });
 
         if (!response.ok) {

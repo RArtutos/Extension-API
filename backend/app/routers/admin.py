@@ -24,45 +24,55 @@ async def create_user(user: UserCreate, current_user: dict = Depends(get_current
 
 @router.get("/analytics")
 async def get_analytics(current_user: dict = Depends(get_current_admin_user)):
-    # Get analytics for the last 24 hours
     start_time = datetime.utcnow() - timedelta(hours=24)
-    analytics = db.get_analytics(start_time)
-    
-    # Get all accounts with their current status
-    accounts = db.get_accounts()
-    
-    # Calculate hourly activity
-    hourly_activity = db.get_hourly_activity(start_time)
-    
-    return {
-        "total_sessions": analytics["total_sessions"],
-        "active_accounts": analytics["active_accounts"],
-        "active_users": analytics["active_users"],
-        "accounts": accounts,
-        "recent_activity": analytics["recent_activity"],
-        "hourly_activity": hourly_activity
-    }
+    return db.get_analytics(start_time)
 
-@router.get("/groups")
-async def get_groups(current_user: dict = Depends(get_current_admin_user)):
-    return db.get_groups()
-
-@router.post("/groups")
-async def create_group(
-    group_data: dict,
-    current_user: dict = Depends(get_current_admin_user)
-):
-    return db.create_group(group_data)
-
-@router.post("/accounts/{account_id}/group/{group_id}")
-async def assign_group(
+@router.post("/users/{user_id}/accounts/{account_id}")
+async def assign_account_to_user(
+    user_id: str,
     account_id: int,
-    group_id: int,
     current_user: dict = Depends(get_current_admin_user)
 ):
-    if not db.assign_group_to_account(account_id, group_id):
-        raise HTTPException(
-            status_code=400,
-            detail="Failed to assign group to account"
-        )
-    return {"message": "Group assigned successfully"}
+    data = db._read_data()
+    
+    # Verify user exists
+    user = db.get_user_by_email(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify account exists
+    account = next((a for a in data["accounts"] if a["id"] == account_id), None)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    
+    # Create user_account entry if it doesn't exist
+    user_account = next(
+        (ua for ua in data["user_accounts"] 
+         if ua["user_id"] == user_id and ua["account_id"] == account_id),
+        None
+    )
+    
+    if not user_account:
+        data["user_accounts"].append({
+            "user_id": user_id,
+            "account_id": account_id,
+            "active_sessions": 0,
+            "last_activity": None
+        })
+        db._write_data(data)
+        
+    return {"message": "Account assigned successfully"}
+
+@router.delete("/users/{user_id}/accounts/{account_id}")
+async def remove_account_from_user(
+    user_id: str,
+    account_id: int,
+    current_user: dict = Depends(get_current_admin_user)
+):
+    data = db._read_data()
+    data["user_accounts"] = [
+        ua for ua in data["user_accounts"]
+        if not (ua["user_id"] == user_id and ua["account_id"] == account_id)
+    ]
+    db._write_data(data)
+    return {"message": "Account removed successfully"}
