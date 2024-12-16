@@ -16,10 +16,6 @@ class AdminService(BaseService):
         users = self.get_users()
         return next((user for user in users if user['email'] == user_id), None)
 
-    def get_analytics(self) -> Dict:
-        result = self._handle_request('get', f"{self.endpoint}/analytics")
-        return result if result else {'accounts': [], 'recent_activity': []}
-
     def get_user_accounts(self, user_id: str) -> List[Dict]:
         result = self._handle_request('get', f"{self.endpoint}/users/{user_id}/accounts")
         return result if result else []
@@ -49,3 +45,7 @@ class AdminService(BaseService):
         except Exception as e:
             print(f"Error removing account: {str(e)}")
             return False
+
+    def get_analytics(self) -> Dict:
+        result = self._handle_request('get', f"{self.endpoint}/analytics")
+        return result if result else {'accounts': [], 'recent_activity': []}
