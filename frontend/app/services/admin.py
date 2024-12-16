@@ -27,3 +27,25 @@ class AdminService(BaseService):
     def delete_user(self, user_id: str) -> bool:
         result = self._handle_request('delete', f"{self.endpoint}/users/{user_id}")
         return bool(result)
+
+    # Preset management methods
+    def get_presets(self) -> List[Dict]:
+        result = self._handle_request('get', f"{self.endpoint}/presets")
+        return result if result else []
+
+    def create_preset(self, data: Dict) -> Optional[Dict]:
+        return self._handle_request('post', f"{self.endpoint}/presets", data)
+
+    def get_preset(self, preset_id: int) -> Optional[Dict]:
+        return self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
+
+    def update_preset(self, preset_id: int, data: Dict) -> Optional[Dict]:
+        return self._handle_request('put', f"{self.endpoint}/presets/{preset_id}", data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        result = self._handle_request('delete', f"{self.endpoint}/presets/{preset_id}")
+        return bool(result)
+
+    def get_analytics(self) -> Dict:
+        result = self._handle_request('get', f"{self.endpoint}/analytics")
+        return result if result else {'accounts': [], 'recent_activity': []}

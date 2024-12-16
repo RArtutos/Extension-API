@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Presets</h2>
+        <h2>Account Presets</h2>
         <a href="{{ url_for('admin.create_preset') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Create Preset
         </a>
@@ -20,16 +20,26 @@
                             <th>Description</th>
                             <th>Accounts</th>
                             <th>Users</th>
+                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for preset in presets %}
-                        <tr>
+                        <tr class="fade-in">
                             <td>{{ preset.name }}</td>
                             <td>{{ preset.description or '-' }}</td>
-                            <td>{{ preset.account_ids|length }}</td>
-                            <td>{{ preset.user_count }}</td>
+                            <td>
+                                <span class="badge bg-primary">
+                                    {{ preset.account_ids|length }} accounts
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ preset.user_count }} users
+                                </span>
+                            </td>
+                            <td>{{ preset.created_at|datetime }}</td>
                             <td>
                                 <div class="btn-group">
                                     <a href="{{ url_for('admin.edit_preset', preset_id=preset.id) }}" 
@@ -68,11 +78,17 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete this preset? This action cannot be undone.
+                <p>Are you sure you want to delete this preset? This action cannot be undone.</p>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Warning: This will affect all users currently using this preset.
+                </p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
             </div>
         </div>
     </div>
@@ -91,17 +107,19 @@ function deletePreset(presetId) {
 
 document.getElementById('confirmDelete').addEventListener('click', async function() {
     try {
-        const response = await fetch(`/admin/presets/${presetToDelete}`, {
-            method: 'DELETE',
+        const response = await fetch(`/admin/presets/${presetToDelete}/delete`, {
+            method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token() }}'
             }
         });
         
-        if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success) {
             location.reload();
         } else {
-            const data = await response.json();
             alert(data.message || 'Failed to delete preset');
         }
     } catch (error) {

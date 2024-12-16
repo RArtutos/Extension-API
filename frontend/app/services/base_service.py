@@ -1,39 +1,48 @@
-from typing import Optional, Dict
+"""Base service class for API interactions"""
+from typing import Optional, Dict, Any
 import requests
-from flask_login import current_user
-from ..core.session import SessionManager
+from flask import current_app
 from ..config import Config
 
 class BaseService:
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
-        self.base_url = Config.API_URL
+        self.base_url = Config.API_URL  # Use Config directly instead of current_app
 
-    def _get_headers(self) -> Dict:
-        token = SessionManager.get_stored_token()
+    def _get_headers(self) -> Dict[str, str]:
+        """Get request headers with authentication"""
+        headers = {'Content-Type': 'application/json'}
+        token = self._get_auth_token()
         if token:
-            return {
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json'
-            }
-        return {'Content-Type': 'application/json'}
+            headers['Authorization'] = f'Bearer {token}'
+        return headers
 
-    def _handle_request(self, operation: str, endpoint: str, data: Dict = None, params: Dict = None) -> Optional[Dict]:
+    def _get_auth_token(self) -> Optional[str]:
+        """Get authentication token from session"""
+        from flask import session
+        return session.get('token')
+
+    def _handle_request(self, method: str, endpoint: str, data: Dict = None, params: Dict = None) -> Any:
+        """Handle API request with error handling"""
         try:
             url = f"{self.base_url}{endpoint}"
             headers = self._get_headers()
             
-            if operation == 'get':
+            if method == 'get':
                 response = requests.get(url, headers=headers, params=params)
-            elif operation == 'post':
+            elif method == 'post':
                 response = requests.post(url, headers=headers, json=data)
-            elif operation == 'put':
+            elif method == 'put':
                 response = requests.put(url, headers=headers, json=data)
-            elif operation == 'delete':
+            elif method == 'delete':
                 response = requests.delete(url, headers=headers)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
             
             response.raise_for_status()
             return response.json() if response.content else None
-        except Exception as e:
-            print(f"Error in {operation}: {str(e)}")
-            return None
+            
+        except requests.exceptions.RequestException as e:
+            if current_app:
+                current_app.logger.error(f"API request failed: {str(e)}")
+            raise
