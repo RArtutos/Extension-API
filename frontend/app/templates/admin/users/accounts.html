@@ -6,7 +6,7 @@
     
     <div class="row">
         <!-- Groups Assignment -->
-        <div class="col-md-12 mb-4">
+        <div class="col-md-12 mb-4" data-user-id="{{ user.email }}">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Assign Account Groups</h5>
@@ -18,11 +18,6 @@
                                 <label for="group-select" class="form-label">Select Group</label>
                                 <select id="group-select" class="form-select">
                                     <option value="">Choose a group...</option>
-                                    {% for group in groups %}
-                                        <option value="{{ group.id }}">
-                                            {{ group.name }} ({{ group.accounts|length }} accounts)
-                                        </option>
-                                    {% endfor %}
                                 </select>
                             </div>
                             <div class="col-auto">
@@ -103,85 +98,59 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-async function assignAccount(userId, accountId) {
-    try {
-        const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to assign account');
-        }
-    } catch (error) {
-        alert('Error assigning account: ' + error.message);
-        console.error('Error:', error);
-    }
-}
-
-async function removeAccount(userId, accountId) {
-    if (!confirm('Are you sure you want to remove this account?')) {
-        return;
-    }
+<script type="module">
+    import { GroupManager } from '/static/js/admin/groups.js';
     
-    try {
-        const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to remove account');
-        }
-    } catch (error) {
-        alert('Error removing account: ' + error.message);
-        console.error('Error:', error);
-    }
-}
+    const groupManager = new GroupManager();
+    groupManager.init();
 
-document.getElementById('assign-group-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const groupId = document.getElementById('group-select').value;
-    if (!groupId) {
-        alert('Please select a group');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/admin/users/{{ user.email }}/groups/${groupId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
+    // Make account functions available globally
+    window.assignAccount = async function(userId, accountId) {
+        try {
+            const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to assign account');
             }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to assign group');
+        } catch (error) {
+            alert('Error assigning account: ' + error.message);
+            console.error('Error:', error);
         }
-    } catch (error) {
-        alert('Error assigning group: ' + error.message);
-        console.error('Error:', error);
-    }
-});
+    };
+
+    window.removeAccount = async function(userId, accountId) {
+        if (!confirm('Are you sure you want to remove this account?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/admin/users/${userId}/accounts/${accountId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to remove account');
+            }
+        } catch (error) {
+            alert('Error removing account: ' + error.message);
+            console.error('Error:', error);
+        }
+    };
 </script>
 {% endblock %}

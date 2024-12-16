@@ -41,3 +41,16 @@ class GroupService(BaseService):
         except Exception as e:
             print(f"Error assigning account to group: {str(e)}")
             return False
+
+    def get_formatted_groups(self) -> List[Dict]:
+        """Get groups formatted for dropdown selection"""
+        groups = self.get_all()
+        return [
+            {
+                'id': group['id'],
+                'name': group['name'],
+                'account_count': len(group.get('accounts', [])),
+                'description': group.get('description', '')
+            }
+            for group in groups
+        ]

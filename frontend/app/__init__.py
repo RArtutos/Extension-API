@@ -35,12 +35,12 @@ def create_app():
     from .routes.accounts import bp as accounts_bp
     from .routes.proxies import bp as proxies_bp
     from .routes.admin import bp as admin_bp
-    from .routes.groups import bp as groups_bp
+    from .routes.admin.groups import bp as admin_groups_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(accounts_bp)
     app.register_blueprint(proxies_bp)
     app.register_blueprint(admin_bp)
-    app.register_blueprint(groups_bp)
+    app.register_blueprint(admin_groups_bp, url_prefix='/admin')
     
     return app

@@ -13,20 +13,24 @@ group_service = GroupService()
 @login_required
 @admin_required
 def user_accounts(user_id):
-    user = admin_service.get_user(user_id)
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('admin.list_users'))
+    try:
+        user = admin_service.get_user(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('admin.list_users'))
+            
+        accounts = admin_service.get_user_accounts(user_id)
+        available_accounts = admin_service.get_available_accounts()
+        groups = group_service.get_all()  # Get all available groups
         
-    accounts = admin_service.get_user_accounts(user_id)
-    available_accounts = admin_service.get_available_accounts()
-    groups = group_service.get_all()  # Get all available groups
-    
-    return render_template('admin/users/accounts.html', 
-                         user=user, 
-                         accounts=accounts,
-                         available_accounts=available_accounts,
-                         groups=groups)
+        return render_template('admin/users/accounts.html', 
+                             user=user, 
+                             accounts=accounts,
+                             available_accounts=available_accounts,
+                             groups=groups)
+    except Exception as e:
+        flash(f'Error loading user accounts: {str(e)}', 'error')
+        return redirect(url_for('admin.list_users'))
 
 @bp.route('/users/<user_id>/groups/<int:group_id>', methods=['POST'])
 @login_required

@@ -56,7 +56,3 @@ class AdminService(BaseService):
         except Exception as e:
             print(f"Error removing account: {str(e)}")
             return False
-
-    def get_analytics(self) -> Dict:
-        result = self._handle_request('get', f"{self.endpoint}/analytics")
-        return result if result else {'accounts': [], 'recent_activity': []}
