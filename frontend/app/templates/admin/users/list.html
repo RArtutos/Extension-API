@@ -5,58 +5,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Users Management</h2>
         <div>
-            <a href="{{ url_for('admin.create_preset') }}" class="btn btn-success me-2">
-                <i class="bi bi-plus-circle"></i> New Preset
-            </a>
             <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">
                 <i class="bi bi-person-plus"></i> Add User
             </a>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Active Users by Account</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Account</th>
-                                    <th>Active Users</th>
-                                    <th>Max Users</th>
-                                    <th>Usage</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for account in accounts %}
-                                <tr>
-                                    <td>{{ account.name }}</td>
-                                    <td>{{ account.active_users }}</td>
-                                    <td>{{ account.max_concurrent_users }}</td>
-                                    <td>
-                                        <div class="progress">
-                                            {% set percentage = (account.active_users / account.max_concurrent_users * 100)|round|int %}
-                                            <div class="progress-bar {% if percentage > 80 %}bg-danger{% elif percentage > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                                                 role="progressbar"
-                                                 style="width: {{ percentage }}%"
-                                                 aria-valuenow="{{ percentage }}"
-                                                 aria-valuemin="0"
-                                                 aria-valuemax="100">
-                                                {{ percentage }}%
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -71,7 +22,6 @@
                         <tr>
                             <th>Email</th>
                             <th>Role</th>
-                            <th>Preset</th>
                             <th>Expires</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -86,10 +36,9 @@
                                     {{ 'Admin' if user.is_admin else 'User' }}
                                 </span>
                             </td>
-                            <td>{{ user.preset_name or '-' }}</td>
                             <td>
                                 {% if user.expires_at %}
-                                    {{ user.expires_at|datetime }}
+                                    {{ user.expires_at }}
                                 {% else %}
                                     Never
                                 {% endif %}

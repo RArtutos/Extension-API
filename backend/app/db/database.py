@@ -18,14 +18,28 @@ class Database:
 
     # User methods
     def get_users(self) -> List[Dict]:
-        data = self._read_data()
+    data = self._read_data()
         users = data.get("users", [])
-        # Add assigned accounts to each user
+    
+        # Add required fields and process data
         for user in users:
+            # Convert string timestamps to datetime objects
+            if isinstance(user.get("created_at"), str):
+                user["created_at"] = datetime.fromisoformat(user["created_at"])
+            if user.get("expires_at") and isinstance(user["expires_at"], str):
+                user["expires_at"] = datetime.fromisoformat(user["expires_at"])
+            
+        # Add is_active field based on expiration
+            user["is_active"] = True
+            if user.get("expires_at"):
+                user["is_active"] = datetime.utcnow() < user["expires_at"]
+            
+            # Add assigned_accounts field
             user["assigned_accounts"] = [
                 ua["account_id"] for ua in data.get("user_accounts", [])
                 if ua["user_id"] == user["email"]
             ]
+        
         return users
 
     def get_user_by_email(self, email: str) -> Optional[Dict]:
@@ -332,3 +346,4 @@ def remove_all_user_accounts(self, user_id: str) -> bool:
     ]
     self._write_data(data)
     return True
+

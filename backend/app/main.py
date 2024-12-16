@@ -17,7 +17,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(accounts.router, prefix="/api/accounts", tags=["accounts"])
 app.include_router(proxies.router, prefix="/api/proxies", tags=["proxies"])
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(admin.router, prefix="/api", tags=["admin"])  # Changed to include /api prefix
 
 @app.on_event("startup")
 async def startup_event():

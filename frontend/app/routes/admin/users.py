@@ -43,27 +43,3 @@ def user_accounts(user_id):
                          user=user, 
                          accounts=accounts,
                          available_accounts=available_accounts)
-
-@admin.bp.route('/users/<user_id>/accounts/<int:account_id>', methods=['POST'])
-@login_required
-@admin_required
-def assign_account(user_id, account_id):
-    try:
-        result = admin_service.assign_account_to_user(user_id, account_id)
-        if result:
-            return jsonify({'success': True, 'message': 'Account assigned successfully'})
-        return jsonify({'success': False, 'message': 'Failed to assign account'}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin.bp.route('/users/<user_id>/accounts/<int:account_id>', methods=['DELETE'])
-@login_required
-@admin_required
-def remove_account(user_id, account_id):
-    try:
-        result = admin_service.remove_account_from_user(user_id, account_id)
-        if result:
-            return jsonify({'success': True, 'message': 'Account removed successfully'})
-        return jsonify({'success': False, 'message': 'Failed to remove account'}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500

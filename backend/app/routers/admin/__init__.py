@@ -1,6 +1,9 @@
 from fastapi import APIRouter
-from . import users, presets
+from .users import router as users_router
+from .analytics import router as analytics_router
 
-router = APIRouter(prefix="/admin")
-router.include_router(users.router)
-router.include_router(presets.router)
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+# Include sub-routers
+router.include_router(users_router)
+router.include_router(analytics_router)

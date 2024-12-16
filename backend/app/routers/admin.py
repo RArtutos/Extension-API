@@ -27,27 +27,9 @@ async def create_user(user: UserCreate, current_user: dict = Depends(get_current
         preset_id=user.preset_id
     )
 
-@router.get("/presets", response_model=List[Preset])
-async def get_presets(current_user: dict = Depends(get_current_admin_user)):
-    return db.get_presets()
-
-@router.post("/presets", response_model=Preset)
-async def create_preset(preset: PresetCreate, current_user: dict = Depends(get_current_admin_user)):
-    return db.create_preset(preset.dict())
-
-@router.put("/presets/{preset_id}", response_model=Preset)
-async def update_preset(
-    preset_id: int, 
-    preset: PresetUpdate, 
-    current_user: dict = Depends(get_current_admin_user)
-):
-    updated_preset = db.update_preset(preset_id, preset.dict())
-    if not updated_preset:
-        raise HTTPException(status_code=404, detail="Preset not found")
-    return updated_preset
-
-@router.delete("/presets/{preset_id}")
-async def delete_preset(preset_id: int, current_user: dict = Depends(get_current_admin_user)):
-    if not db.delete_preset(preset_id):
-        raise HTTPException(status_code=404, detail="Preset not found")
-    return {"message": "Preset deleted successfully"}
+@router.get("/users/{user_id}/accounts")
+async def get_user_accounts(user_id: str, current_user: dict = Depends(get_current_admin_user)):
+    user = db.get_user_by_email(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db.get_accounts(user_id)

@@ -22,8 +22,7 @@ class UserResponse(UserBase):
     created_at: datetime
     expires_at: Optional[datetime] = None
     preset_id: Optional[int] = None
-    preset_name: Optional[str] = None
-    is_active: bool
+    is_active: bool = True  # Add default value
     assigned_accounts: List[int] = []
 
     class Config:
