@@ -22,15 +22,15 @@
                         {% endif %}
                     </div>
                     <div class="mb-3">
-                        {{ form.group.label(class="form-label") }}
-                        {{ form.group(class="form-control") }}
-                        {% if form.group.errors %}
-                            <div class="text-danger">
-                                {% for error in form.group.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                        <label for="group" class="form-label">Group</label>
+                        <select name="group" id="group" class="form-control">
+                            <option value="">Select a group</option>
+                            {% for group in groups %}
+                                <option value="{{ group.id }}" {% if account and account.group_id == group.id %}selected{% endif %}>
+                                    {{ group.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="mb-3">
                         {{ form.domain.label(class="form-label") }}

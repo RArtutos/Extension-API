@@ -1,6 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from .account import Account
 
 class GroupBase(BaseModel):
     name: str
@@ -12,3 +13,6 @@ class GroupCreate(GroupBase):
 class Group(GroupBase):
     id: int
     created_at: datetime
+
+class GroupWithAccounts(Group):
+    accounts: List[Account] = []

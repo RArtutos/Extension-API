@@ -5,6 +5,34 @@
     <h2 class="mb-4">Manage Accounts for {{ user.email }}</h2>
     
     <div class="row">
+        <!-- Groups Assignment -->
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    Assign Account Groups
+                </div>
+                <div class="card-body">
+                    <form id="assign-group-form" class="mb-3">
+                        <div class="row align-items-end">
+                            <div class="col">
+                                <label for="group-select" class="form-label">Select Group</label>
+                                <select id="group-select" class="form-control">
+                                    <option value="">Choose a group...</option>
+                                    {% for group in groups %}
+                                    <option value="{{ group.id }}">{{ group.name }} ({{ group.accounts|length }} accounts)</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">Assign Group</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Accounts -->
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
@@ -15,10 +43,13 @@
                         {% for account in accounts %}
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             {{ account.name }}
-                            <button class="btn btn-sm btn-danger" 
-                                    onclick="removeAccount('{{ user.email }}', {{ account.id }})">
-                                Remove
-                            </button>
+                            <div>
+                                <span class="badge bg-secondary me-2">{{ account.group }}</span>
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="removeAccount('{{ user.email }}', {{ account.id }})">
+                                    Remove
+                                </button>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -37,10 +68,13 @@
                         {% if account.id not in accounts|map(attribute='id')|list %}
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             {{ account.name }}
-                            <button class="btn btn-sm btn-success" 
-                                    onclick="assignAccount('{{ user.email }}', {{ account.id }})">
-                                Assign
-                            </button>
+                            <div>
+                                <span class="badge bg-secondary me-2">{{ account.group }}</span>
+                                <button class="btn btn-sm btn-success" 
+                                        onclick="assignAccount('{{ user.email }}', {{ account.id }})">
+                                    Assign
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
                         {% endfor %}
@@ -103,5 +137,35 @@ async function removeAccount(userId, accountId) {
         console.error('Error:', error);
     }
 }
+
+document.getElementById('assign-group-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const groupId = document.getElementById('group-select').value;
+    if (!groupId) {
+        alert('Please select a group');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/admin/users/{{ user.email }}/groups/${groupId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to assign group');
+        }
+    } catch (error) {
+        alert('Error assigning group: ' + error.message);
+        console.error('Error:', error);
+    }
+});
 </script>
 {% endblock %}

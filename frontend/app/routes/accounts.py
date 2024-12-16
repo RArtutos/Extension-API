@@ -1,20 +1,23 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from ..services.accounts import AccountService
+from ..services.groups import GroupService
 from ..forms.account import AccountForm
 
 bp = Blueprint('accounts', __name__)
 account_service = AccountService()
+group_service = GroupService()
 
 @bp.route('/')
 @login_required
 def list():
     try:
         accounts = account_service.get_all()
-        return render_template('accounts/list.html', accounts=accounts)
+        groups = group_service.get_all()
+        return render_template('accounts/list.html', accounts=accounts, groups=groups)
     except Exception as e:
         flash(f'Error loading accounts: {str(e)}', 'error')
-        return render_template('accounts/list.html', accounts=[])
+        return render_template('accounts/list.html', accounts=[], groups=[])
 
 @bp.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -31,18 +34,9 @@ def create():
                 flash('Failed to create account', 'error')
         except Exception as e:
             flash(str(e), 'error')
-            return render_template('accounts/form.html', form=form, is_edit=False)
     
-    return render_template('accounts/form.html', form=form, is_edit=False)
-
-@bp.route('/api/accounts/status')
-@login_required
-def get_accounts_status():
-    try:
-        accounts = account_service.get_all()
-        return jsonify(accounts)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    groups = group_service.get_all()
+    return render_template('accounts/form.html', form=form, groups=groups, is_edit=False)
 
 @bp.route('/<int:account_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -55,7 +49,6 @@ def edit(account_id):
     form = AccountForm()
     if request.method == 'GET':
         form.name.data = account['name']
-        form.group.data = account.get('group', '')
         form.max_concurrent_users.data = account.get('max_concurrent_users', 1)
         
         cookies = account.get('cookies', [])
@@ -76,14 +69,14 @@ def edit(account_id):
         except Exception as e:
             flash(str(e), 'error')
     
-    return render_template('accounts/form.html', form=form, is_edit=True)
+    groups = group_service.get_all()
+    return render_template('accounts/form.html', form=form, groups=groups, account=account, is_edit=True)
 
-@bp.route('/<int:account_id>/delete', methods=['POST'])
+@bp.route('/api/accounts/status')
 @login_required
-def delete(account_id):
+def get_accounts_status():
     try:
-        if account_service.delete(account_id):
-            return jsonify({'success': True, 'message': 'Account deleted successfully'})
-        return jsonify({'success': False, 'message': 'Failed to delete account'}), 400
+        accounts = account_service.get_all()
+        return jsonify(accounts)
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'error': str(e)}), 500

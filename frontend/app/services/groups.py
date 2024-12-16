@@ -16,6 +16,10 @@ class GroupService(BaseService):
             print(f"Error creating group: {str(e)}")
             raise
     
+    def get_by_id(self, group_id: int) -> Optional[Dict]:
+        result = self._handle_request('get', f"{self.endpoint}/{group_id}")
+        return result if result else None
+    
     def assign_account(self, group_id: int, account_id: int) -> bool:
         try:
             result = self._handle_request(
