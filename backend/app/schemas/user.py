@@ -8,19 +8,23 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     is_admin: bool = False
+    expires_in_days: Optional[int] = None
+    preset_id: Optional[int] = None
 
 class UserUpdate(UserBase):
     password: Optional[str] = None
     is_admin: Optional[bool] = None
+    expires_in_days: Optional[int] = None
+    preset_id: Optional[int] = None
 
 class UserResponse(UserBase):
     is_admin: bool
-    created_at: str
+    created_at: datetime
+    expires_at: Optional[datetime] = None
+    preset_id: Optional[int] = None
+    preset_name: Optional[str] = None
+    is_active: bool
     assigned_accounts: List[int] = []
 
-class UserAccountAssignment(BaseModel):
-    user_id: str
-    account_id: int
-    max_concurrent_users: int = 1
-    active_sessions: int = 0
-    last_activity: Optional[str] = None
+    class Config:
+        from_attributes = True

@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional
+from datetime import datetime
 from ..db.database import Database
 
 class PresetManager:
@@ -7,15 +8,22 @@ class PresetManager:
 
     def create_preset(self, preset_data: Dict) -> Optional[Dict]:
         """Create a new preset"""
+        preset_data["created_at"] = datetime.utcnow()
         return self.db.create_preset(preset_data)
 
     def get_preset(self, preset_id: int) -> Optional[Dict]:
         """Get a specific preset"""
-        return self.db.get_preset(preset_id)
+        preset = self.db.get_preset(preset_id)
+        if preset:
+            preset["user_count"] = len(self.db.get_users_by_preset(preset_id))
+        return preset
 
     def get_all_presets(self) -> List[Dict]:
-        """Get all presets"""
-        return self.db.get_presets()
+        """Get all presets with user counts"""
+        presets = self.db.get_presets()
+        for preset in presets:
+            preset["user_count"] = len(self.db.get_users_by_preset(preset["id"]))
+        return presets
 
     def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
         """Update an existing preset"""
@@ -31,8 +39,12 @@ class PresetManager:
         if not preset:
             return False
 
+        # Remove existing account assignments
+        self.db.remove_all_user_accounts(user_id)
+
+        # Assign new accounts from preset
         success = True
-        for account_id in preset['account_ids']:
+        for account_id in preset["account_ids"]:
             if not self.db.assign_account_to_user(user_id, account_id):
                 success = False
 

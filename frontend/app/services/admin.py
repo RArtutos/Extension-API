@@ -28,24 +28,15 @@ class AdminService(BaseService):
         result = self._handle_request('get', "/api/accounts/")
         return result if result else []
 
-    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
-        try:
-            result = self._handle_request(
-                'post', 
-                f"{self.endpoint}/users/{user_id}/accounts/{account_id}"
-            )
-            return bool(result and result.get('message'))
-        except Exception as e:
-            print(f"Error assigning account: {str(e)}")
-            return False
+    def get_presets(self) -> List[Dict]:
+        result = self._handle_request('get', f"{self.endpoint}/presets")
+        return result if result else []
 
-    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
-        try:
-            result = self._handle_request(
-                'delete',
-                f"{self.endpoint}/users/{user_id}/accounts/{account_id}"
-            )
-            return bool(result and result.get('message'))
-        except Exception as e:
-            print(f"Error removing account: {str(e)}")
-            return False
+    def create_preset(self, data: Dict) -> Optional[Dict]:
+        return self._handle_request('post', f"{self.endpoint}/presets", data)
+
+    def update_preset(self, preset_id: int, data: Dict) -> Optional[Dict]:
+        return self._handle_request('put', f"{self.endpoint}/presets/{preset_id}", data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        return bool(self._handle_request('delete', f"{self.endpoint}/presets/{preset_id}"))
