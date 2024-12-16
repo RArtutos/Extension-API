@@ -5,7 +5,7 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0">Create User</h4>
+                <h4 class="mb-0">{{ 'Edit' if is_edit else 'Create' }} User</h4>
             </div>
             <div class="card-body">
                 <form method="POST">
@@ -31,7 +31,11 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
+                        {% if is_edit %}
+                            <small class="text-muted">{{ form.password.description }}</small>
+                        {% endif %}
                     </div>
+                    {% if not is_edit %}
                     <div class="mb-3">
                         {{ form.valid_days.label(class="form-label") }}
                         {{ form.valid_days(class="form-control", type="number", min="1") }}
@@ -44,13 +48,27 @@
                         {% endif %}
                         <small class="text-muted">{{ form.valid_days.description }}</small>
                     </div>
+                    {% else %}
+                    <div class="mb-3">
+                        {{ form.expires_at.label(class="form-label") }}
+                        {{ form.expires_at(class="form-control", type="date") }}
+                        {% if form.expires_at.errors %}
+                            <div class="text-danger">
+                                {% for error in form.expires_at.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">{{ form.expires_at.description }}</small>
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <div class="form-check">
                             {{ form.is_admin(class="form-check-input") }}
                             {{ form.is_admin.label(class="form-check-label") }}
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Create User</button>
+                    <button type="submit" class="btn btn-primary">{{ 'Update' if is_edit else 'Create' }} User</button>
                     <a href="{{ url_for('admin.list_users') }}" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>

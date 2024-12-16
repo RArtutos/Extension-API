@@ -15,6 +15,7 @@
                         <th>Email</th>
                         <th>Role</th>
                         <th>Assigned Accounts</th>
+                        <th>Status</th>
                         <th>Expires</th>
                         <th>Actions</th>
                     </tr>
@@ -26,8 +27,23 @@
                         <td>{{ 'Admin' if user.is_admin else 'User' }}</td>
                         <td>{{ user.assigned_accounts|length }}</td>
                         <td>
+                            {% if user.is_expired %}
+                                <span class="badge bg-danger">Expired</span>
+                            {% else %}
+                                <span class="badge bg-success">Active</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if user.expires_at %}
-                                {{ user.expires_at|format_datetime }}
+                                {% if user.is_expired %}
+                                    <span class="text-danger">Expired on {{ user.expires_at|format_datetime }}</span>
+                                {% else %}
+                                    {{ user.expires_at|format_datetime }}
+                                    <br>
+                                    <small class="text-muted">
+                                        ({{ user.days_until_expiration }} days remaining)
+                                    </small>
+                                {% endif %}
                             {% else %}
                                 Never
                             {% endif %}
@@ -37,6 +53,10 @@
                                 <a href="{{ url_for('admin.user_accounts', user_id=user.email) }}" 
                                    class="btn btn-sm btn-info">
                                     Manage Accounts
+                                </a>
+                                <a href="{{ url_for('admin.edit_user', user_id=user.email) }}"
+                                   class="btn btn-sm btn-warning">
+                                    Edit
                                 </a>
                                 <button class="btn btn-sm btn-danger" 
                                         onclick="deleteUser('{{ user.email }}')">

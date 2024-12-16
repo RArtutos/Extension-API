@@ -12,15 +12,39 @@ class AdminService(BaseService):
 
     def create_user(self, data: Dict) -> Optional[Dict]:
         # Add expiration date if valid_days is provided
-        if 'valid_days' in data:
+        if 'valid_days' in data and data['valid_days']:
             expiration_date = datetime.utcnow() + timedelta(days=data['valid_days'])
             data['expires_at'] = expiration_date.isoformat()
             
         return self._handle_request('post', f"{self.endpoint}/users", data)
 
+    def update_user(self, user_id: str, data: Dict) -> Optional[Dict]:
+        # Handle expiration date
+        if 'expires_at' in data and data['expires_at']:
+            if isinstance(data['expires_at'], datetime):
+                data['expires_at'] = data['expires_at'].isoformat()
+                
+        # Remove empty password if not changed
+        if 'password' in data and not data['password']:
+            del data['password']
+            
+        return self._handle_request('put', f"{self.endpoint}/users/{user_id}", data)
+
+    def delete_user(self, user_id: str) -> bool:
+        try:
+            result = self._handle_request('delete', f"{self.endpoint}/users/{user_id}")
+            return bool(result and result.get('message'))
+        except Exception as e:
+            print(f"Error deleting user: {str(e)}")
+            return False
+
     def get_user(self, user_id: str) -> Optional[Dict]:
         users = self.get_users()
-        return next((user for user in users if user['email'] == user_id), None)
+        user = next((user for user in users if user['email'] == user_id), None)
+        if user and user.get('expires_at'):
+            expires_at = datetime.fromisoformat(user['expires_at'].replace('Z', '+00:00'))
+            user['expires_at'] = expires_at.date()
+        return user
 
     def get_user_accounts(self, user_id: str) -> List[Dict]:
         result = self._handle_request('get', f"{self.endpoint}/users/{user_id}/accounts")
