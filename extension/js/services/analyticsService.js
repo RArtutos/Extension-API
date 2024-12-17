@@ -1,16 +1,37 @@
-import { api } from '../utils/api.js';
+import { httpClient } from '../utils/httpClient.js';
 import { storage } from '../utils/storage.js';
-import { ANALYTICS_CONFIG } from '../config.js';
+import { ANALYTICS_CONFIG } from '../config/constants.js';
 
 class AnalyticsService {
     constructor() {
         this.pendingEvents = [];
+        this.timers = new Map();
         this.initializeTracking();
     }
 
     async initializeTracking() {
-        // Start periodic tracking
         setInterval(() => this.flushEvents(), ANALYTICS_CONFIG.TRACKING_INTERVAL);
+    }
+
+    resetTimer(domain) {
+        if (this.timers.has(domain)) {
+            clearTimeout(this.timers.get(domain));
+        }
+
+        const timer = setTimeout(() => {
+            this.trackEvent({
+                type: 'domain_activity',
+                domain,
+                action: 'inactive'
+            });
+        }, ANALYTICS_CONFIG.INACTIVITY_TIMEOUT);
+
+        this.timers.set(domain, timer);
+        this.trackEvent({
+            type: 'domain_activity',
+            domain,
+            action: 'active'
+        });
     }
 
     async trackEvent(eventData) {
@@ -34,7 +55,7 @@ class AnalyticsService {
             const token = await storage.get('token');
             if (!token) return;
 
-            await api.post('/analytics/events', { events }, token);
+            await httpClient.post('/analytics/events', { events });
         } catch (error) {
             console.error('Error sending analytics:', error);
             // Requeue failed events

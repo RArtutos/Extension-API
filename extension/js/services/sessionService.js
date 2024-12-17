@@ -1,6 +1,4 @@
-import { storage } from '../utils/storage.js';
 import { httpClient } from '../utils/httpClient.js';
-import { SESSION_CONFIG } from '../config/constants.js';
 
 class SessionService {
   constructor() {
@@ -16,7 +14,7 @@ class SessionService {
       return response.success;
     } catch (error) {
       console.error('Error starting session:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -28,7 +26,7 @@ class SessionService {
       return response.success;
     } catch (error) {
       console.error('Error updating session:', error);
-      return false;
+      throw error;
     }
   }
 
@@ -38,26 +36,8 @@ class SessionService {
       return response.success;
     } catch (error) {
       console.error('Error ending session:', error);
-      return false;
+      throw error;
     }
-  }
-
-  startInactivityTimer(domain, accountId) {
-    if (this.activeTimers.has(domain)) {
-      clearTimeout(this.activeTimers.get(domain));
-    }
-
-    const timer = setTimeout(
-      () => this.handleInactivity(domain, accountId),
-      SESSION_CONFIG.INACTIVITY_TIMEOUT
-    );
-
-    this.activeTimers.set(domain, timer);
-  }
-
-  async handleInactivity(domain, accountId) {
-    this.activeTimers.delete(domain);
-    await this.endSession(accountId);
   }
 }
 
