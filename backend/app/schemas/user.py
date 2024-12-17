@@ -1,4 +1,3 @@
-```python
 from pydantic import BaseModel, EmailStr, conint
 from typing import Optional, List
 from datetime import datetime
@@ -11,7 +10,7 @@ class UserCreate(UserBase):
     is_admin: bool = False
     expires_in_days: Optional[int] = None
     preset_id: Optional[int] = None
-    max_devices: conint(ge=1) = 1  # Mínimo 1 dispositivo
+    max_devices: conint(ge=1) = 1  # Default to 1 device
 
 class UserUpdate(UserBase):
     password: Optional[str] = None
@@ -29,6 +28,5 @@ class UserSession(BaseModel):
 class UserAnalytics(BaseModel):
     total_logins: int
     active_sessions: int
-    account_usage: List[dict]  # Lista de cuentas y tiempo de uso
-    last_activities: List[dict]  # Últimas actividades
-```
+    account_usage: List[dict]  # List of accounts and usage time
+    last_activities: List[dict]  # Recent activities

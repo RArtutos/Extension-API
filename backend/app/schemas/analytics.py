@@ -1,4 +1,3 @@
-```python
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -14,7 +13,7 @@ class AccountActivity(BaseModel):
 
 class UserAnalytics(BaseModel):
     user_id: str
-    total_time: int  # Tiempo total en segundos
+    total_time: int  # Total time in seconds
     total_sessions: int
     current_sessions: int
     last_activity: Optional[datetime]
@@ -28,4 +27,3 @@ class AccountAnalytics(BaseModel):
     current_sessions: int
     usage_by_domain: List[dict]
     user_activities: List[AccountActivity]
-```
