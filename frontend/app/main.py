@@ -24,6 +24,7 @@ def create_app():
     app.config['SESSION_REFRESH_EACH_REQUEST'] = True
     
     with app.app_context():
+        # Initialize extensions
         login_manager.init_app(app)
         csrf.init_app(app)
         flask_session.init_app(app)
@@ -31,17 +32,18 @@ def create_app():
         login_manager.login_view = 'auth.login'
         login_manager.login_message_category = 'info'
         
-        # Import and register blueprints
+        # Import blueprints
         from .routes.auth import bp as auth_bp
         from .routes.accounts import bp as accounts_bp
         from .routes.proxies import bp as proxies_bp
         from .routes.admin import bp as admin_bp
         from .routes.analytics import bp as analytics_bp
         
+        # Register blueprints
         app.register_blueprint(auth_bp)
         app.register_blueprint(accounts_bp)
         app.register_blueprint(proxies_bp)
         app.register_blueprint(admin_bp)
-        app.register_blueprint(analytics_bp)
-    
-    return app
+        app.register_blueprint(analytics_bp)  # Register analytics blueprint
+        
+        return app

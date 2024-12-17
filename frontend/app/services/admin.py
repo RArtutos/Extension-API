@@ -9,6 +9,29 @@ class AdminService(BaseService):
         result = self._handle_request('get', f"{self.endpoint}/users/")
         return result if result else []
 
+    def get_presets(self) -> List[Dict]:
+        """Get all presets"""
+        result = self._handle_request('get', f"{self.endpoint}/presets")
+        return result if result else []
+
+    def get_preset(self, preset_id: int) -> Optional[Dict]:
+        """Get a specific preset"""
+        result = self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
+        return result if result else None
+
+    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
+        """Create a new preset"""
+        return self._handle_request('post', f"{self.endpoint}/presets", preset_data)
+
+    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
+        """Update an existing preset"""
+        return self._handle_request('put', f"{self.endpoint}/presets/{preset_id}", preset_data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        """Delete a preset"""
+        result = self._handle_request('delete', f"{self.endpoint}/presets/{preset_id}")
+        return bool(result)
+
     def get_analytics(self) -> Dict:
         """Get admin analytics dashboard data"""
         result = self._handle_request('get', f"{self.endpoint}/analytics")

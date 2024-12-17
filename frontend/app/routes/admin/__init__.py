@@ -7,6 +7,14 @@ bp = Blueprint('admin', __name__, url_prefix='/admin')
 # Import views after blueprint creation to avoid circular imports
 from . import users, analytics, presets
 
+# Register analytics routes
+bp.add_url_rule('/analytics/user/<user_id>', 'analytics.user_analytics',
+                view_func=login_required(analytics.user_analytics))
+bp.add_url_rule('/analytics/account/<int:account_id>', 'analytics.account_analytics',
+                view_func=login_required(analytics.account_analytics))
+bp.add_url_rule('/analytics/dashboard', 'analytics.dashboard',
+                view_func=login_required(admin_required(analytics.analytics_dashboard)))
+
 # Register presets routes
 bp.add_url_rule('/presets', 'list_presets', 
                 view_func=login_required(admin_required(presets.list_presets)))
