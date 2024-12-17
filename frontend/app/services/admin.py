@@ -16,61 +16,30 @@ class AdminService(BaseService):
         users = self.get_users()
         return next((user for user in users if user['email'] == user_id), None)
 
-    def create_user(self, user_data: Dict) -> Optional[Dict]:
-        """Create a new user"""
-        return self._handle_request('post', f"{self.endpoint}/users", user_data)
-
-    def get_presets(self) -> List[Dict]:
-        """Get all presets"""
-        result = self._handle_request('get', f"{self.endpoint}/presets")
+    def get_user_accounts(self, user_id: str) -> List[Dict]:
+        """Get accounts assigned to a user"""
+        result = self._handle_request('get', f"{self.endpoint}/users/{user_id}/accounts")
         return result if result else []
 
-    def get_preset(self, preset_id: int) -> Optional[Dict]:
-        """Get a specific preset"""
-        return self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
+    def get_available_accounts(self) -> List[Dict]:
+        """Get all available accounts"""
+        result = self._handle_request('get', f"{self.endpoint}/accounts")
+        return result if result else []
 
-    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
-        """Create a new preset"""
-        return self._handle_request('post', f"{self.endpoint}/presets", preset_data)
-
-    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
-        """Update an existing preset"""
-        return self._handle_request('put', f"{self.endpoint}/presets/{preset_id}", preset_data)
-
-    def delete_preset(self, preset_id: int) -> bool:
-        """Delete a preset"""
-        result = self._handle_request('delete', f"{self.endpoint}/presets/{preset_id}")
+    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
+        """Assign an account to a user"""
+        result = self._handle_request(
+            'post', 
+            f"{self.endpoint}/users/{user_id}/accounts/{account_id}"
+        )
         return bool(result)
 
-    def get_analytics(self) -> Dict:
-        """Get admin analytics dashboard data"""
-        result = self._handle_request('get', f"{self.endpoint}/analytics")
-        return result if result else {
-            'accounts': [],
-            'recent_activity': []
-        }
+    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
+        """Remove an account from a user"""
+        result = self._handle_request(
+            'delete', 
+            f"{self.endpoint}/users/{user_id}/accounts/{account_id}"
+        )
+        return bool(result)
 
-    def get_user_analytics(self, user_id: str) -> Dict:
-        """Get analytics for a specific user"""
-        result = self._handle_request('get', f"{self.endpoint}/analytics/user/{user_id}")
-        return result if result else {
-            'user_id': user_id,
-            'total_time': 0,
-            'total_sessions': 0,
-            'current_sessions': 0,
-            'last_activity': None,
-            'account_usage': []
-        }
-
-    def get_account_analytics(self, account_id: int) -> Dict:
-        """Get analytics for a specific account"""
-        result = self._handle_request('get', f"{self.endpoint}/analytics/account/{account_id}")
-        return result if result else {
-            'account_id': account_id,
-            'total_users': 0,
-            'active_users': 0,
-            'total_sessions': 0,
-            'current_sessions': 0,
-            'usage_by_domain': [],
-            'user_activities': []
-        }
+    # ... resto del código existente ...

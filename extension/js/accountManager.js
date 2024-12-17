@@ -1,107 +1,200 @@
 import { storage } from './utils/storage.js';
-import { accountService } from './services/accountService.js';
-import { sessionService } from './services/sessionService.js';
+import { api } from './utils/api.js';
 import { ui } from './utils/ui.js';
+import { analyticsService } from './services/analyticsService.js';
+import { SESSION_CONFIG } from './config.js';
 
 class AccountManager {
     constructor() {
-        this.proxyEnabled = false;
+        this.currentAccount = null;
+        this.activeTimers = new Map();
         this.initializeEventListeners();
     }
 
     async init() {
-        const token = await storage.get('token');
-        if (token) {
+        try {
+            const token = await storage.get('token');
+            if (!token) {
+                ui.showLoginForm();
+                return;
+            }
+
             ui.showAccountManager();
-            this.loadAccounts();
-        } else {
-            ui.showLoginForm();
+            await this.loadAccounts();
+            await this.restoreSession();
+        } catch (error) {
+            console.error('Initialization error:', error);
+            ui.showError('Failed to initialize. Please try again.');
+        }
+    }
+
+    async restoreSession() {
+        const currentAccount = await storage.get('currentAccount');
+        if (currentAccount) {
+            await this.switchAccount(currentAccount, true);
         }
     }
 
     initializeEventListeners() {
-        // Listen for tab updates to track activity
         chrome.tabs.onActivated.addListener(async (activeInfo) => {
             const tab = await chrome.tabs.get(activeInfo.tabId);
             if (tab.url) {
                 const domain = new URL(tab.url).hostname;
-                const currentAccount = await storage.get('currentAccount');
-                if (currentAccount) {
-                    await sessionService.resetTimer(domain, currentAccount.id);
-                }
+                await this.handleTabActivity(domain);
             }
         });
 
         chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             if (changeInfo.url) {
                 const domain = new URL(changeInfo.url).hostname;
-                const currentAccount = await storage.get('currentAccount');
-                if (currentAccount) {
-                    await sessionService.resetTimer(domain, currentAccount.id);
-                }
+                await this.handleTabActivity(domain);
             }
         });
     }
 
-    async loadAccounts() {
+    async handleTabActivity(domain) {
+        if (!this.currentAccount) return;
+
         try {
-            const accounts = await accountService.loadAccounts();
-            const currentAccount = await accountService.getCurrentAccount();
-            ui.updateAccountsList(accounts, currentAccount);
+            await analyticsService.trackPageView(domain);
+            await this.resetSessionTimer(domain);
         } catch (error) {
-            console.error('Failed to load accounts:', error);
-            ui.showError('Error loading accounts. Please try again.');
+            console.error('Error handling tab activity:', error);
         }
     }
 
-    async switchAccount(account) {
+    async loadAccounts() {
         try {
-            console.log('Switching to account:', account);
+            const accounts = await api.getAccounts();
+            const currentAccount = await storage.get('currentAccount');
+            ui.updateAccountsList(accounts, currentAccount);
+            return accounts;
+        } catch (error) {
+            console.error('Error loading accounts:', error);
+            ui.showError('Failed to load accounts');
+            return [];
+        }
+    }
 
-            // Check session limits
-            const sessionInfo = await accountService.getSessionInfo(account.id);
-            if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-                throw new Error(`This account has reached its maximum number of concurrent users (${sessionInfo.max_concurrent_users}). Please try another account.`);
+    async switchAccount(account, isRestore = false) {
+        try {
+            // Verify session limits
+            const sessionInfo = await api.getSessionInfo(account.id);
+            if (!isRestore && sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
+                throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
             }
 
-            // Remove current account cookies and session
-            const currentAccount = await accountService.getCurrentAccount();
-            if (currentAccount) {
-                for (const cookie of currentAccount.cookies) {
-                    await accountService.removeAllCookies(cookie.domain);
-                }
-                await sessionService.removeSession(currentAccount.id);
+            // End current session if exists
+            if (this.currentAccount) {
+                await this.endCurrentSession();
             }
 
-            // Set new account cookies and create session
-            const firstDomain = accountService.getFirstDomain(account);
-            if (firstDomain) {
-                const sessionCreated = await sessionService.createSession(account.id, firstDomain);
-                if (!sessionCreated) {
-                    throw new Error('Failed to create session. Please try again.');
-                }
-
-                for (const cookie of account.cookies) {
-                    await accountService.setCookies(cookie);
-                }
-                await sessionService.startInactivityTimer(firstDomain, account.id);
+            // Start new session
+            const success = await this.startNewSession(account);
+            if (!success) {
+                throw new Error('Failed to start new session');
             }
 
-            // Update storage and UI
+            // Track account switch
+            await analyticsService.trackAccountSwitch(this.currentAccount, account);
+
+            // Update state
+            this.currentAccount = account;
             await storage.set('currentAccount', account);
-            const accounts = await accountService.loadAccounts();
+            
+            // Refresh UI
+            const accounts = await this.loadAccounts();
             ui.updateAccountsList(accounts, account);
 
-            // Open first page if available
-            if (firstDomain) {
-                chrome.tabs.create({ url: `https://${firstDomain}` });
+            if (!isRestore) {
+                ui.showSuccess('Account switched successfully');
             }
-
-            ui.showSuccess('Account switched successfully');
         } catch (error) {
             console.error('Error switching account:', error);
             ui.showError(error.message);
+            throw error;
         }
+    }
+
+    async startNewSession(account) {
+        try {
+            const domain = this.getFirstDomain(account);
+            if (!domain) return false;
+
+            await analyticsService.trackSessionStart(account.id, domain);
+            await this.resetSessionTimer(domain);
+
+            return true;
+        } catch (error) {
+            console.error('Error starting session:', error);
+            return false;
+        }
+    }
+
+    async endCurrentSession() {
+        if (!this.currentAccount) return;
+
+        try {
+            const domain = this.getFirstDomain(this.currentAccount);
+            if (domain) {
+                await analyticsService.trackSessionEnd(this.currentAccount.id, domain);
+            }
+
+            // Clear timers
+            this.activeTimers.forEach(timer => clearTimeout(timer));
+            this.activeTimers.clear();
+
+        } catch (error) {
+            console.error('Error ending session:', error);
+        }
+    }
+
+    async resetSessionTimer(domain) {
+        if (!this.currentAccount) return;
+
+        // Clear existing timer
+        if (this.activeTimers.has(domain)) {
+            clearTimeout(this.activeTimers.get(domain));
+        }
+
+        // Set new timer
+        const timer = setTimeout(
+            () => this.handleSessionTimeout(domain),
+            SESSION_CONFIG.INACTIVITY_TIMEOUT
+        );
+
+        this.activeTimers.set(domain, timer);
+
+        // Update session activity
+        try {
+            await api.updateSession(this.currentAccount.id, domain);
+        } catch (error) {
+            console.error('Error updating session:', error);
+        }
+    }
+
+    async handleSessionTimeout(domain) {
+        if (!this.currentAccount) return;
+
+        try {
+            await analyticsService.trackSessionEnd(this.currentAccount.id, domain);
+            this.activeTimers.delete(domain);
+            
+            // Check if this was the last active domain
+            if (this.activeTimers.size === 0) {
+                await this.endCurrentSession();
+                await storage.remove('currentAccount');
+                this.currentAccount = null;
+                ui.showSessionExpired();
+            }
+        } catch (error) {
+            console.error('Error handling session timeout:', error);
+        }
+    }
+
+    getFirstDomain(account) {
+        if (!account?.cookies?.length) return null;
+        return account.cookies[0].domain.replace(/^\./, '');
     }
 }
 

@@ -1,63 +1,80 @@
 import { api } from '../utils/api.js';
 import { storage } from '../utils/storage.js';
+import { ANALYTICS_CONFIG } from '../config.js';
 
 class AnalyticsService {
     constructor() {
-        this.activeTimers = new Map();
+        this.pendingEvents = [];
+        this.initializeTracking();
     }
 
-    async logAccess(domain, action) {
-        const token = await storage.get('token');
-        const currentAccount = await storage.get('currentAccount');
+    async initializeTracking() {
+        // Start periodic tracking
+        setInterval(() => this.flushEvents(), ANALYTICS_CONFIG.TRACKING_INTERVAL);
+    }
 
-        if (!token || !currentAccount) return;
+    async trackEvent(eventData) {
+        this.pendingEvents.push({
+            ...eventData,
+            timestamp: new Date().toISOString()
+        });
+
+        if (this.pendingEvents.length >= ANALYTICS_CONFIG.BATCH_SIZE) {
+            await this.flushEvents();
+        }
+    }
+
+    async flushEvents() {
+        if (this.pendingEvents.length === 0) return;
+
+        const events = [...this.pendingEvents];
+        this.pendingEvents = [];
 
         try {
-            await api.logAccess({
-                domain,
-                action,
-                accountId: currentAccount.id
-            });
+            const token = await storage.get('token');
+            if (!token) return;
+
+            await api.post('/analytics/events', { events }, token);
         } catch (error) {
-            console.error('Error logging access:', error);
+            console.error('Error sending analytics:', error);
+            // Requeue failed events
+            this.pendingEvents = [...events, ...this.pendingEvents];
         }
     }
 
-    startDomainTimer(domain) {
-        if (this.activeTimers.has(domain)) {
-            clearTimeout(this.activeTimers.get(domain));
-        }
-
-        const timer = setTimeout(async () => {
-            await this.handleInactivity(domain);
-        }, 10 * 60 * 1000); // 10 minutes
-
-        this.activeTimers.set(domain, timer);
+    async trackPageView(domain) {
+        await this.trackEvent({
+            type: 'pageview',
+            domain,
+            action: 'view'
+        });
     }
 
-    async handleInactivity(domain) {
-        const currentAccount = await storage.get('currentAccount');
-        if (!currentAccount) return;
-
-        // Remove cookies for the inactive domain
-        const cookies = await chrome.cookies.getAll({ domain });
-        for (const cookie of cookies) {
-            try {
-                await chrome.cookies.remove({
-                    url: `https://${domain}`,
-                    name: cookie.name
-                });
-            } catch (error) {
-                console.error(`Error removing cookie ${cookie.name}:`, error);
-            }
-        }
-
-        this.activeTimers.delete(domain);
-        await this.logAccess(domain, 'timeout');
+    async trackAccountSwitch(fromAccount, toAccount) {
+        await this.trackEvent({
+            type: 'account_switch',
+            from: fromAccount?.id,
+            to: toAccount.id,
+            action: 'switch'
+        });
     }
 
-    resetTimer(domain) {
-        this.startDomainTimer(domain);
+    async trackSessionStart(accountId, domain) {
+        await this.trackEvent({
+            type: 'session',
+            accountId,
+            domain,
+            action: 'start'
+        });
+    }
+
+    async trackSessionEnd(accountId, domain) {
+        await this.trackEvent({
+            type: 'session',
+            accountId,
+            domain,
+            action: 'end'
+        });
     }
 }
 

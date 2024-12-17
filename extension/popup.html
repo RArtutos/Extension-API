@@ -1,39 +1,68 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Account Manager</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>Gestor de Cuentas</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="app">
-    <!-- Login Form -->
-    <div id="login-form" class="container">
-      <h2>Login</h2>
-      <input type="email" id="email" placeholder="Email" required>
-      <input type="password" id="password" placeholder="Password" required>
-      <button id="login-btn">Login</button>
+    <div id="app">
+        <!-- Formulario de Login -->
+        <div id="login-form" class="container">
+            <div class="logo">
+                <img src="icons/logo.png" alt="Logo">
+                <h1>Gestor de Cuentas</h1>
+            </div>
+            <div class="form-group">
+                <input type="email" id="email" placeholder="Correo electrónico" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" placeholder="Contraseña" required>
+            </div>
+            <button id="login-btn" class="btn-primary">Iniciar Sesión</button>
+        </div>
+        
+        <!-- Gestor de Cuentas -->
+        <div id="account-manager" class="container hidden">
+            <div class="header">
+                <h2>Cuentas</h2>
+                <div class="user-info">
+                    <span id="user-email"></span>
+                    <button id="logout-btn" class="btn-secondary">Cerrar Sesión</button>
+                </div>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" id="search-accounts" placeholder="Buscar cuentas...">
+            </div>
+            
+            <div id="accounts-list" class="accounts-container"></div>
+            
+            <div class="footer">
+                <div class="status">
+                    <div id="connection-status" class="status-indicator"></div>
+                    <span id="status-text">Conectado</span>
+                </div>
+                <button id="refresh-btn" class="btn-icon" title="Actualizar">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
-    
-    <!-- Account Manager -->
-    <div id="account-manager" class="container hidden">
-      <div class="header">
-        <h2>Accounts</h2>
-      </div>
-      
-      <div id="accounts-list"></div>
-      
-      <div class="proxy-section">
-        <label class="toggle">
-          <input type="checkbox" id="use-proxy">
-          <span>Use Proxy</span>
-        </label>
-      </div>
 
-      <button id="logout-btn">Logout</button>
-    </div>
-  </div>
-  
-  <script type="module" src="js/popup.js"></script>
+    <template id="account-template">
+        <div class="account-item">
+            <div class="account-info">
+                <div class="account-name"></div>
+                <div class="account-group"></div>
+                <div class="account-status"></div>
+            </div>
+            <button class="switch-btn"></button>
+        </div>
+    </template>
+
+    <script type="module" src="js/popup.js"></script>
 </body>
 </html>
