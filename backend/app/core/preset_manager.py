@@ -39,12 +39,12 @@ class PresetManager:
         if not preset:
             return False
 
-        # Remove existing account assignments
-        self.db.remove_all_user_accounts(user_id)
+        # Remove existing account assignments first
+        self.db.user_accounts.remove_all_user_accounts(user_id)
 
         # Assign new accounts from preset
         success = True
-        for account_id in preset["account_ids"]:
+        for account_id in preset.get("account_ids", []):
             if not self.db.assign_account_to_user(user_id, account_id):
                 success = False
 
