@@ -6,4 +6,4 @@ class AuthConfig:
     VALIDATE_ENDPOINT = '/api/auth/validate'
     TOKEN_HEADER = 'Authorization'
     TOKEN_TYPE = 'Bearer'
-    API_URL = Config.EXTERNAL_API_URL
+    API_URL = Config.API_URL
