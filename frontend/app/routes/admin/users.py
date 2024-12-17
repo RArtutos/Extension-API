@@ -1,5 +1,5 @@
 """Admin users views"""
-from flask import render_template, redirect, url_for, flash
+from flask import render_template, redirect, url_for, flash, jsonify, request
 from ...services.admin import AdminService
 from ...forms.user import UserForm
 
@@ -16,12 +16,29 @@ class UserViews:
         form = UserForm()
         if form.validate_on_submit():
             try:
-                admin_service.create_user(form.data)
-                flash('User created successfully', 'success')
-                return redirect(url_for('admin.list_users'))
+                # Convert form data to dict and handle preset_id
+                user_data = form.data.copy()
+                preset_id = user_data.get('preset_id')
+                if preset_id == 0:  # Handle case where '0' is selected as 'None'
+                    user_data['preset_id'] = None
+                
+                user = admin_service.create_user(user_data)
+                if user:
+                    flash('User created successfully', 'success')
+                    return redirect(url_for('admin.list_users'))
+                flash('Failed to create user', 'error')
             except Exception as e:
                 flash(str(e), 'error')
         return render_template('admin/users/form.html', form=form)
+
+    def assign_account(self, user_id, account_id):
+        """Assign account to user"""
+        try:
+            if admin_service.assign_account_to_user(user_id, account_id):
+                return jsonify({'success': True, 'message': 'Account assigned successfully'})
+            return jsonify({'success': False, 'message': 'Failed to assign account'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
 
     def user_accounts(self, user_id):
         """Manage user accounts"""
