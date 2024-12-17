@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
 from datetime import timedelta
 from .models.user import User
+from .utils.date_utils import format_datetime
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
@@ -32,6 +33,9 @@ def create_app():
         login_manager.login_view = 'auth.login'
         login_manager.login_message_category = 'info'
         
+        # Register template filters
+        app.jinja_env.filters['datetime'] = format_datetime
+        
         # Import blueprints
         from .routes.auth import bp as auth_bp
         from .routes.accounts import bp as accounts_bp
@@ -44,6 +48,6 @@ def create_app():
         app.register_blueprint(accounts_bp)
         app.register_blueprint(proxies_bp)
         app.register_blueprint(admin_bp)
-        app.register_blueprint(analytics_bp)  # Register analytics blueprint
+        app.register_blueprint(analytics_bp)
         
         return app
