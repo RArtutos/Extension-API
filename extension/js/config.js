@@ -1,5 +1,5 @@
 // API configuration
-export const API_URL = 'https://api.artutos.us.kg';
+export const API_URL = 'https://api.artutos.us.kg';  // Update this to match your backend URL
 
 // Session configuration
 export const SESSION_CONFIG = {
@@ -25,4 +25,13 @@ export const STORAGE_KEYS = {
 export const ANALYTICS_CONFIG = {
   TRACKING_INTERVAL: 60000, // 1 minute
   BATCH_SIZE: 10
+};
+
+// CORS configuration
+export const CORS_CONFIG = {
+  credentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*'
+  }
 };

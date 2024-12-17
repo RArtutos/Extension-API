@@ -1,4 +1,4 @@
-import { API_URL } from '../config.js';
+import { API_URL, CORS_CONFIG } from '../config.js';
 import { storage } from '../utils/storage.js';
 import { STORAGE_KEYS } from '../config.js';
 
@@ -10,8 +10,8 @@ class ApiService {
     async getHeaders() {
         const token = await storage.get(STORAGE_KEYS.TOKEN);
         return {
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json'
+            ...CORS_CONFIG.headers,
+            'Authorization': token ? `Bearer ${token}` : ''
         };
     }
 
@@ -19,8 +19,10 @@ class ApiService {
         try {
             const response = await fetch(`${this.baseUrl}/api/auth/validate`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    'Authorization': `Bearer ${token}`,
+                    ...CORS_CONFIG.headers
+                },
+                credentials: CORS_CONFIG.credentials
             });
             
             if (!response.ok) {
@@ -40,7 +42,9 @@ class ApiService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    ...CORS_CONFIG.headers
                 },
+                credentials: CORS_CONFIG.credentials,
                 body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
             });
 
@@ -53,7 +57,6 @@ class ApiService {
                 throw new Error('Invalid response from server');
             }
 
-            // Store the token
             await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
             return data;
         } catch (error) {
@@ -66,12 +69,12 @@ class ApiService {
         try {
             const headers = await this.getHeaders();
             const response = await fetch(`${this.baseUrl}/api/accounts`, {
-                headers
+                headers,
+                credentials: CORS_CONFIG.credentials
             });
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Clear invalid token
                     await storage.remove(STORAGE_KEYS.TOKEN);
                 }
                 throw new Error('Failed to fetch accounts');

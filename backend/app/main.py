@@ -6,15 +6,17 @@ from .core.config import settings
 
 app = FastAPI(title="Account Manager API")
 
+# Update CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"]  # Exposes all headers
 )
 
-# Include routers with correct prefixes
+# Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(accounts.router, prefix="/api/accounts", tags=["accounts"])
 app.include_router(proxies.router, prefix="/api/proxies", tags=["proxies"])
