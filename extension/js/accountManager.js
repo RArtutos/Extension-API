@@ -1,5 +1,6 @@
 import { accountService } from './services/accountService.js';
 import { sessionService } from './services/sessionService.js';
+import { cookieManager } from './utils/cookieManager.js';
 import { ui } from './utils/ui.js';
 
 class AccountManager {
@@ -33,6 +34,7 @@ class AccountManager {
       sessionService.startInactivityTimer(domain, this.currentAccount.id);
     } catch (error) {
       console.error('Error handling tab activity:', error);
+      ui.showError('Error updating session activity');
     }
   }
 
@@ -41,6 +43,7 @@ class AccountManager {
       // End current session if exists
       if (this.currentAccount) {
         await sessionService.endSession(this.currentAccount.id);
+        await cookieManager.removeAccountCookies(this.currentAccount);
       }
 
       // Switch account
@@ -49,11 +52,17 @@ class AccountManager {
         throw new Error('Failed to switch account');
       }
 
+      // Set new cookies
+      await cookieManager.setAccountCookies(account);
+
       // Start new session
       const domain = this.getFirstDomain(account);
       if (domain) {
         await sessionService.startSession(account.id, domain);
         sessionService.startInactivityTimer(domain, account.id);
+        
+        // Open the domain in a new tab
+        chrome.tabs.create({ url: `https://${domain}` });
       }
 
       // Update state
@@ -66,14 +75,15 @@ class AccountManager {
 
     } catch (error) {
       console.error('Error switching account:', error);
-      ui.showError(error.message);
+      ui.showError(error.message || 'Error switching account');
       throw error;
     }
   }
 
   getFirstDomain(account) {
     if (!account?.cookies?.length) return null;
-    return account.cookies[0].domain.replace(/^\./, '');
+    const domain = account.cookies[0].domain;
+    return domain.startsWith('.') ? domain.substring(1) : domain;
   }
 }
 

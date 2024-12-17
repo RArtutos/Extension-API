@@ -1,19 +1,44 @@
 class CookieManager {
   async setAccountCookies(account) {
-    if (!account.cookies) return;
+    if (!account?.cookies?.length) {
+      console.warn('No cookies found for account');
+      return;
+    }
 
-    for (const cookie of account.cookies) {
-      const domain = cookie.domain;
-      
-      // Remove existing cookies first
-      await this.removeAllCookiesForDomain(domain);
-
-      // Set new cookies
-      if (cookie.name === 'header_cookies') {
-        await this.setHeaderCookies(domain, cookie.value);
-      } else {
-        await this.setCookie(domain, cookie.name, cookie.value);
+    try {
+      const permissions = await this.requestPermissions();
+      if (!permissions) {
+        throw new Error('Cookie permissions not granted');
       }
+
+      for (const cookie of account.cookies) {
+        const domain = cookie.domain;
+        
+        // Remove existing cookies first
+        await this.removeAllCookiesForDomain(domain);
+
+        // Set new cookies
+        if (cookie.name === 'header_cookies') {
+          await this.setHeaderCookies(domain, cookie.value);
+        } else {
+          await this.setCookie(domain, cookie.name, cookie.value);
+        }
+      }
+    } catch (error) {
+      console.error('Error setting account cookies:', error);
+      throw new Error('Failed to set account cookies');
+    }
+  }
+
+  async requestPermissions() {
+    try {
+      return await chrome.permissions.request({
+        permissions: ['cookies'],
+        origins: ['<all_urls>']
+      });
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      return false;
     }
   }
 
@@ -39,12 +64,26 @@ class CookieManager {
         sameSite: 'lax'
       });
     } catch (error) {
-      console.warn(`Error setting cookie ${name}:`, error);
+      console.warn(`Error setting cookie ${name}, retrying with alternative settings:`, error);
+      try {
+        await chrome.cookies.set({
+          url,
+          name,
+          value,
+          domain: cleanDomain,
+          path: '/',
+          secure: false,
+          sameSite: 'no_restriction'
+        });
+      } catch (retryError) {
+        console.error(`Failed to set cookie ${name} after retry:`, retryError);
+        throw retryError;
+      }
     }
   }
 
   async removeAccountCookies(account) {
-    if (!account.cookies) return;
+    if (!account?.cookies?.length) return;
     
     for (const cookie of account.cookies) {
       await this.removeAllCookiesForDomain(cookie.domain);
@@ -52,10 +91,11 @@ class CookieManager {
   }
 
   async removeAllCookiesForDomain(domain) {
-    const cookies = await chrome.cookies.getAll({ domain });
+    const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+    const cookies = await chrome.cookies.getAll({ domain: cleanDomain });
+    
     for (const cookie of cookies) {
       try {
-        const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
         await chrome.cookies.remove({
           url: `https://${cleanDomain}`,
           name: cookie.name

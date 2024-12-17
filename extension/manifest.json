@@ -5,13 +5,15 @@
   "description": "Manage accounts and cookies",
   "permissions": [
     "storage",
-    "proxy",
     "cookies",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
   "host_permissions": [
-    "*://*/*"
+    "*://*/*",
+    "https://*/*"
   ],
+  "optional_permissions": [],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
@@ -19,6 +21,7 @@
     "default_popup": "popup.html"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "js/background.js",
+    "type": "module"
   }
 }

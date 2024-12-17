@@ -1,7 +1,6 @@
-import { API_URL } from '../config/constants.js';
+import { httpClient } from '../utils/httpClient.js';
 import { storage } from '../utils/storage.js';
 import { STORAGE_KEYS } from '../config/constants.js';
-import { httpClient } from '../utils/httpClient.js';
 
 class AccountService {
   async getCurrentAccount() {
@@ -11,10 +10,10 @@ class AccountService {
   async getAccounts() {
     try {
       const response = await httpClient.get('/api/accounts/');
-      return response;
+      return response || [];
     } catch (error) {
       console.error('Error fetching accounts:', error);
-      throw error;
+      throw new Error('Failed to fetch accounts');
     }
   }
 
@@ -37,10 +36,10 @@ class AccountService {
   async getSessionInfo(accountId) {
     try {
       const response = await httpClient.get(`/api/accounts/${accountId}/session`);
-      return response;
+      return response || { active_sessions: 0, max_concurrent_users: 1 };
     } catch (error) {
       console.error('Error getting session info:', error);
-      throw error;
+      throw new Error('Failed to get session information');
     }
   }
 }
