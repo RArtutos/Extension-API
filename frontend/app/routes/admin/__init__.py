@@ -33,3 +33,9 @@ bp.add_url_rule('/presets', 'admin_list_presets',
 bp.add_url_rule('/presets/create', 'admin_create_preset',
                 view_func=login_required(admin_required(preset_views.create_preset)),
                 methods=['GET', 'POST'])
+bp.add_url_rule('/presets/<int:preset_id>/edit', 'admin_edit_preset',
+                view_func=login_required(admin_required(preset_views.edit_preset)),
+                methods=['GET', 'POST'])
+bp.add_url_rule('/presets/<int:preset_id>', 'admin_delete_preset',
+                view_func=login_required(admin_required(preset_views.delete_preset)),
+                methods=['DELETE'])
