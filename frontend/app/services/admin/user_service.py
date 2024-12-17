@@ -9,7 +9,7 @@ class UserService(BaseService):
     def get_all(self) -> List[Dict]:
         """Get all users"""
         try:
-            return self._handle_request('get', '/') or []
+            return self._handle_request('get', '/api/admin/users') or []
         except Exception as e:
             print(f"Error fetching users: {str(e)}")
             return []
@@ -17,7 +17,7 @@ class UserService(BaseService):
     def get_by_id(self, user_id: str) -> Optional[Dict]:
         """Get user by ID"""
         try:
-            return self._handle_request('get', f"/{user_id}")
+            return self._handle_request('get', f"/api/admin/users/{user_id}")
         except Exception:
             return None
 
@@ -31,7 +31,7 @@ class UserService(BaseService):
             if user_data.get('preset_id') == 0:
                 user_data['preset_id'] = None
                 
-            return self._handle_request('post', '/', user_data)
+            return self._handle_request('post', '/api/admin/users/create', user_data)
         except Exception as e:
             print(f"Error creating user: {str(e)}")
             return None
@@ -39,14 +39,14 @@ class UserService(BaseService):
     def get_accounts(self, user_id: str) -> List[Dict]:
         """Get accounts assigned to a user"""
         try:
-            return self._handle_request('get', f"/{user_id}/accounts") or []
+            return self._handle_request('get', f"/api/admin/users/{user_id}/accounts") or []
         except Exception:
             return []
 
     def get_available_accounts(self) -> List[Dict]:
         """Get all available accounts"""
         try:
-            return self._handle_request('get', '/accounts') or []
+            return self._handle_request('get', '/api/admin/accounts') or []
         except Exception:
             return []
 
@@ -55,7 +55,7 @@ class UserService(BaseService):
         try:
             if not user_id or not isinstance(account_id, int):
                 return False
-            result = self._handle_request('post', f"/{user_id}/accounts/{account_id}")
+            result = self._handle_request('post', f"/api/admin/users/{user_id}/accounts/{account_id}")
             return bool(result and result.get('success'))
         except Exception as e:
             print(f"Error assigning account: {str(e)}")
@@ -66,7 +66,7 @@ class UserService(BaseService):
         try:
             if not user_id or not isinstance(account_id, int):
                 return False
-            result = self._handle_request('delete', f"/{user_id}/accounts/{account_id}")
+            result = self._handle_request('delete', f"/api/admin/users/{user_id}/accounts/{account_id}")
             return bool(result and result.get('success'))
         except Exception as e:
             print(f"Error removing account: {str(e)}")

@@ -77,3 +77,14 @@ def remove_account(user_id: str, account_id: int):
         return jsonify({'success': False, 'message': 'Failed to remove account'}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@bp.route('/<user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id: str):
+    """Delete user"""
+    try:
+        if user_service.delete(user_id):
+            return jsonify({'success': True, 'message': 'User deleted successfully'})
+        return jsonify({'success': False, 'message': 'Failed to delete user'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500

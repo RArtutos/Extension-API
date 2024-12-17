@@ -2,23 +2,13 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
-from datetime import timedelta, datetime
+from datetime import timedelta
 from .models.user import User
 from .utils.filters import register_filters
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
 flask_session = Session()
-
-def format_datetime(dt):
-    if not dt:
-        return "Never"
-    if isinstance(dt, str):
-        try:
-            dt = datetime.fromisoformat(dt)
-        except (ValueError, TypeError):
-            return dt
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -44,7 +34,6 @@ def create_app():
         login_manager.login_message_category = 'info'
         
         # Register template filters
-        app.jinja_env.filters['datetime'] = format_datetime
         register_filters(app)
         
         # Import blueprints

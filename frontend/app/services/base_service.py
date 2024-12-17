@@ -32,6 +32,13 @@ class BaseService:
                 response = requests.delete(url, headers=headers)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
+
+            # Log request details for debugging
+            if current_app:
+                current_app.logger.debug(f"Request: {method.upper()} {url}")
+                current_app.logger.debug(f"Headers: {headers}")
+                if data:
+                    current_app.logger.debug(f"Data: {data}")
             
             response.raise_for_status()
             return response.json() if response.content else None
@@ -39,6 +46,8 @@ class BaseService:
         except requests.exceptions.RequestException as e:
             if current_app:
                 current_app.logger.error(f"API request failed: {str(e)}")
+                if hasattr(e.response, 'text'):
+                    current_app.logger.error(f"Response text: {e.response.text}")
             if e.response and e.response.status_code == 401:
                 # Clear session on unauthorized
                 SessionService.clear_session()
