@@ -1,10 +1,16 @@
 from typing import Optional, Dict, List
 from datetime import datetime
 from .repositories.analytics_repository import AnalyticsRepository
+from .repositories.account_repository import AccountRepository
 
 class AnalyticsDatabase:
     def __init__(self):
         self.analytics = AnalyticsRepository()
+        self.accounts = AccountRepository()
+
+    def get_all_accounts(self) -> List[Dict]:
+        """Get all accounts"""
+        return self.accounts.get_all()
 
     def get_recent_activities(self, limit: int = 10) -> List[Dict]:
         return self.analytics.get_recent_activities(limit)
