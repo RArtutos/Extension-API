@@ -1,3 +1,4 @@
+"""Admin presets views"""
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from ...services.admin import AdminService
 from ...forms.preset import PresetForm
@@ -26,7 +27,7 @@ class PresetViews:
                 }
                 if admin_service.create_preset(preset_data):
                     flash('Preset created successfully', 'success')
-                    return redirect(url_for('admin.admin_list_presets'))
+                    return redirect(url_for('admin.list_presets'))
                 flash('Failed to create preset', 'error')
             except Exception as e:
                 flash(str(e), 'error')
@@ -37,7 +38,7 @@ class PresetViews:
         preset = admin_service.get_preset(preset_id)
         if not preset:
             flash('Preset not found', 'error')
-            return redirect(url_for('admin.admin_list_presets'))
+            return redirect(url_for('admin.list_presets'))
 
         form = PresetForm()
         if request.method == 'GET':
@@ -54,7 +55,7 @@ class PresetViews:
                 }
                 if admin_service.update_preset(preset_id, preset_data):
                     flash('Preset updated successfully', 'success')
-                    return redirect(url_for('admin.admin_list_presets'))
+                    return redirect(url_for('admin.list_presets'))
                 flash('Failed to update preset', 'error')
             except Exception as e:
                 flash(str(e), 'error')

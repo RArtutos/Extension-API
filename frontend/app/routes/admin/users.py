@@ -1,3 +1,4 @@
+"""Admin users views"""
 from flask import render_template, redirect, url_for, flash
 from ...services.admin import AdminService
 from ...forms.user import UserForm
@@ -17,7 +18,7 @@ class UserViews:
             try:
                 admin_service.create_user(form.data)
                 flash('User created successfully', 'success')
-                return redirect(url_for('admin.admin_list_users'))
+                return redirect(url_for('admin.list_users'))
             except Exception as e:
                 flash(str(e), 'error')
         return render_template('admin/users/form.html', form=form)
@@ -27,7 +28,7 @@ class UserViews:
         user = admin_service.get_user(user_id)
         if not user:
             flash('User not found', 'error')
-            return redirect(url_for('admin.admin_list_users'))
+            return redirect(url_for('admin.list_users'))
             
         accounts = admin_service.get_user_accounts(user_id)
         available_accounts = admin_service.get_available_accounts()
