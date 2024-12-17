@@ -1,7 +1,9 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
+from datetime import datetime
 from .repositories.user_repository import UserRepository
 from .repositories.account_repository import AccountRepository
 from .repositories.user_account_repository import UserAccountRepository
+from .repositories.preset_repository import PresetRepository
 from ..core.config import settings
 
 class Database:
@@ -9,6 +11,7 @@ class Database:
         self.users = UserRepository()
         self.accounts = AccountRepository()
         self.user_accounts = UserAccountRepository()
+        self.presets = PresetRepository()
 
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         return self.users.get_by_email(email)
@@ -44,6 +47,24 @@ class Database:
     def assign_account_to_user(self, user_id: str, account_id: int):
         return self.user_accounts.assign_account(user_id, account_id)
 
-    # Preset methods will be added in a separate PR
+    def remove_all_user_accounts(self, user_id: str):
+        return self.user_accounts.remove_all_user_accounts(user_id)
+
+    # Preset methods
+    def get_presets(self) -> List[Dict]:
+        return self.presets.get_presets()
+
     def get_preset(self, preset_id: int) -> Optional[Dict]:
-        return None  # Temporary until preset functionality is implemented
+        return self.presets.get_preset(preset_id)
+
+    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
+        return self.presets.create_preset(preset_data)
+
+    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
+        return self.presets.update_preset(preset_id, preset_data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        return self.presets.delete_preset(preset_id)
+
+    def get_users_by_preset(self, preset_id: int) -> List[Dict]:
+        return self.presets.get_users_by_preset(preset_id)

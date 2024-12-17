@@ -44,3 +44,17 @@ class UserAccountRepository(BaseRepository):
             self._write_data(data)
             return True
         return False
+
+    def remove_all_user_accounts(self, user_id: str) -> bool:
+        data = self._read_data()
+        initial_count = len(data.get("user_accounts", []))
+        
+        data["user_accounts"] = [
+            ua for ua in data.get("user_accounts", [])
+            if ua["user_id"] != user_id
+        ]
+        
+        if len(data["user_accounts"]) < initial_count:
+            self._write_data(data)
+            return True
+        return False

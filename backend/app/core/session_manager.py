@@ -1,47 +1,56 @@
+```python
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict
+from typing import Optional, Dict, List
+from .config import settings
 from ..db.database import Database
-from ..core.config import settings
 
 class SessionManager:
     def __init__(self):
         self.db = Database()
 
-    def create_session(self, user_id: str, account_id: int, domain: Optional[str] = None) -> bool:
-        """Create a new session if limits allow"""
-        # Check account limits
-        account = self.db.get_account(account_id)
-        if not account:
-            return False
+    async def create_session(self, user_id: str, device_info: Dict) -> Optional[str]:
+        """Crear nueva sesión si no se excede el límite de dispositivos"""
+        user = self.db.get_user_by_email(user_id)
+        if not user:
+            return None
 
-        active_sessions = self.get_active_sessions(account_id)
-        if len(active_sessions) >= account.get('max_concurrent_users', settings.MAX_CONCURRENT_USERS_PER_ACCOUNT):
-            return False
+        active_sessions = self.db.get_active_sessions(user_id)
+        if len(active_sessions) >= user.get('max_devices', 1):
+            return None
 
-        # Create new session
-        session = {
+        session_id = f"{user_id}_{datetime.utcnow().timestamp()}"
+        session_data = {
+            "id": session_id,
             "user_id": user_id,
-            "account_id": account_id,
-            "domain": domain,
-            "last_activity": datetime.utcnow().isoformat()
+            "device_id": device_info.get("device_id"),
+            "ip_address": device_info.get("ip_address"),
+            "user_agent": device_info.get("user_agent"),
+            "created_at": datetime.utcnow(),
+            "last_activity": datetime.utcnow()
         }
-        
-        return self.db.create_session(session)
 
-    def update_session(self, user_id: str, account_id: int, domain: Optional[str] = None) -> bool:
-        """Update session last activity"""
-        return self.db.update_session_activity(user_id, account_id, domain)
+        if self.db.create_session(session_data):
+            return session_id
+        return None
 
-    def cleanup_inactive_sessions(self):
-        """Remove inactive sessions based on timeout"""
-        timeout = datetime.utcnow() - timedelta(seconds=settings.COOKIE_INACTIVITY_TIMEOUT)
-        return self.db.cleanup_inactive_sessions(timeout.isoformat())
+    def update_session(self, session_id: str, activity_data: Dict) -> bool:
+        """Actualizar actividad de sesión"""
+        return self.db.update_session_activity(session_id, activity_data)
 
-    def get_active_sessions(self, account_id: int) -> List[Dict]:
-        """Get all active sessions for an account"""
-        self.cleanup_inactive_sessions()
-        return self.db.get_active_sessions(account_id)
+    def get_user_sessions(self, user_id: str) -> List[Dict]:
+        """Obtener sesiones activas del usuario"""
+        return self.db.get_active_sessions(user_id)
 
-    def remove_session(self, user_id: str, account_id: int) -> bool:
-        """Remove a specific session"""
-        return self.db.remove_session(user_id, account_id)
+    def validate_session(self, session_id: str) -> bool:
+        """Validar si una sesión está activa y no ha expirado"""
+        session = self.db.get_session(session_id)
+        if not session:
+            return False
+
+        timeout = datetime.utcnow() - timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES)
+        return datetime.fromisoformat(session["last_activity"]) > timeout
+
+    def end_session(self, session_id: str) -> bool:
+        """Finalizar una sesión"""
+        return self.db.remove_session(session_id)
+```
