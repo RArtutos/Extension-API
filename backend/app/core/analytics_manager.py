@@ -1,14 +1,14 @@
 from typing import Dict, List
 from datetime import datetime, timedelta
-from ..db.database import Database
+from ..db.analytics import AnalyticsDatabase
 
 class AnalyticsManager:
     def __init__(self):
-        self.db = Database()
+        self.db = AnalyticsDatabase()
 
     def get_dashboard_data(self) -> Dict:
         """Get general analytics dashboard data"""
-        accounts = self.db.get_accounts()
+        accounts = self.db.get_account_users()
         recent_activity = self.db.get_recent_activities(limit=10)
         
         return {
@@ -22,17 +22,7 @@ class AnalyticsManager:
 
     def get_user_analytics(self, user_id: str) -> Dict:
         """Get analytics for a specific user"""
-        sessions = self.db.get_user_sessions(user_id)
-        account_usage = self.db.get_user_account_usage(user_id)
-        
-        return {
-            "user_id": user_id,
-            "total_time": sum(s.get("duration", 0) for s in sessions),
-            "total_sessions": len(sessions),
-            "current_sessions": len([s for s in sessions if s.get("active", False)]),
-            "last_activity": max((s.get("last_activity") for s in sessions), default=None),
-            "account_usage": account_usage
-        }
+        return self.db.get_user_analytics(user_id)
 
     def get_account_analytics(self, account_id: int) -> Dict:
         """Get analytics for a specific account"""
@@ -46,7 +36,7 @@ class AnalyticsManager:
             "total_sessions": len(sessions),
             "current_sessions": len([s for s in sessions if s.get("active", False)]),
             "usage_by_domain": self._aggregate_domain_usage(sessions),
-            "user_activities": self._get_recent_activities(account_id)
+            "user_activities": self.db.get_account_activities(account_id)
         }
 
     def _aggregate_domain_usage(self, sessions: List[Dict]) -> List[Dict]:
@@ -65,7 +55,3 @@ class AnalyticsManager:
                     domain_stats[domain]["total_time"] += session["duration"]
         
         return [{"domain": k, **v} for k, v in domain_stats.items()]
-
-    def _get_recent_activities(self, account_id: int) -> List[Dict]:
-        """Get recent activities for an account"""
-        return self.db.get_account_activities(account_id, limit=10)

@@ -7,9 +7,13 @@ class AnalyticsRepository(BaseRepository):
     def __init__(self):
         super().__init__(settings.DATA_FILE)
 
-    def get_recent_activities(self, limit: int = 10) -> List[Dict]:
+    def get_recent_activities(self, limit: int = 10, account_id: Optional[int] = None) -> List[Dict]:
         data = self._read_data()
         activities = data.get("analytics", [])
+        
+        # Filter by account if specified
+        if account_id is not None:
+            activities = [a for a in activities if a.get("account_id") == account_id]
         
         # Sort by timestamp descending and limit
         sorted_activities = sorted(
