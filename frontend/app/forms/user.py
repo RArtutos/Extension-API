@@ -18,5 +18,8 @@ class UserForm(FlaskForm):
         super().__init__(*args, **kwargs)
         from ..services.admin import AdminService
         admin_service = AdminService()
-        presets = admin_service.get_presets()
-        self.preset_id.choices = [(0, 'None')] + [(p['id'], p['name']) for p in presets]
+        try:
+            presets = admin_service.get_presets()
+            self.preset_id.choices = [(0, 'None')] + [(p['id'], p['name']) for p in presets]
+        except Exception:
+            self.preset_id.choices = [(0, 'None')]

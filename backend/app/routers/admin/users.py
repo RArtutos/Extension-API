@@ -1,3 +1,4 @@
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from ...db.database import Database
@@ -7,11 +8,11 @@ from ...schemas.user import UserCreate, UserResponse
 router = APIRouter()
 db = Database()
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/", response_model=List[UserResponse])
 async def get_users(current_user: dict = Depends(get_current_admin_user)):
     return db.get_users()
 
-@router.post("/users", response_model=UserResponse)
+@router.post("/", response_model=UserResponse)
 async def create_user(user: UserCreate, current_user: dict = Depends(get_current_admin_user)):
     if db.get_user_by_email(user.email):
         raise HTTPException(
@@ -26,14 +27,14 @@ async def create_user(user: UserCreate, current_user: dict = Depends(get_current
         preset_id=user.preset_id
     )
 
-@router.get("/users/{user_id}/accounts")
+@router.get("/{user_id}/accounts")
 async def get_user_accounts(user_id: str, current_user: dict = Depends(get_current_admin_user)):
     user = db.get_user_by_email(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return db.get_accounts(user_id)
 
-@router.delete("/users/{user_id}")
+@router.delete("/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(get_current_admin_user)):
     if current_user["email"] == user_id:
         raise HTTPException(
@@ -51,5 +52,4 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_adm
             detail="Cannot delete admin users"
         )
         
-    # Implementation of user deletion would go here
     return {"message": "User deleted successfully"}

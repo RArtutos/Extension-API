@@ -4,7 +4,7 @@ from ...core.auth import get_current_admin_user
 from ...core.preset_manager import PresetManager
 from ...schemas.preset import PresetCreate, PresetUpdate, Preset
 
-router = APIRouter(prefix="/presets", tags=["presets"])
+router = APIRouter()
 preset_manager = PresetManager()
 
 @router.get("/", response_model=List[Preset])

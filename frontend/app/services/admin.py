@@ -6,11 +6,11 @@ class AdminService(BaseService):
         super().__init__('/api/admin')
 
     def get_users(self) -> List[Dict]:
-        result = self._handle_request('get', f"{self.endpoint}/users")
+        result = self._handle_request('get', f"{self.endpoint}/users/")
         return result if result else []
 
     def create_user(self, data: Dict) -> Optional[Dict]:
-        return self._handle_request('post', f"{self.endpoint}/users", data)
+        return self._handle_request('post', f"{self.endpoint}/users/", data)
 
     def get_user(self, user_id: str) -> Optional[Dict]:
         users = self.get_users()
@@ -30,11 +30,11 @@ class AdminService(BaseService):
 
     # Preset management methods
     def get_presets(self) -> List[Dict]:
-        result = self._handle_request('get', f"{self.endpoint}/presets")
+        result = self._handle_request('get', f"{self.endpoint}/presets/")
         return result if result else []
 
     def create_preset(self, data: Dict) -> Optional[Dict]:
-        return self._handle_request('post', f"{self.endpoint}/presets", data)
+        return self._handle_request('post', f"{self.endpoint}/presets/", data)
 
     def get_preset(self, preset_id: int) -> Optional[Dict]:
         return self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
@@ -45,7 +45,3 @@ class AdminService(BaseService):
     def delete_preset(self, preset_id: int) -> bool:
         result = self._handle_request('delete', f"{self.endpoint}/presets/{preset_id}")
         return bool(result)
-
-    def get_analytics(self) -> Dict:
-        result = self._handle_request('get', f"{self.endpoint}/analytics")
-        return result if result else {'accounts': [], 'recent_activity': []}

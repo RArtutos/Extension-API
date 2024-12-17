@@ -39,7 +39,7 @@
                                     {{ preset.user_count }} users
                                 </span>
                             </td>
-                            <td>{{ preset.created_at|datetime }}</td>
+                            <td>{{ preset.created_at }}</td>
                             <td>
                                 <div class="btn-group">
                                     <a href="{{ url_for('admin.edit_preset', preset_id=preset.id) }}" 

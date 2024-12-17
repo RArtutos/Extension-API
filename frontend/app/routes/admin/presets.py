@@ -5,8 +5,12 @@ from ...forms.preset import PresetForm
 admin_service = AdminService()
 
 def list_presets():
-    presets = admin_service.get_presets()
-    return render_template('admin/presets/list.html', presets=presets)
+    try:
+        presets = admin_service.get_presets()
+        return render_template('admin/presets/list.html', presets=presets)
+    except Exception as e:
+        flash(f'Error loading presets: {str(e)}', 'error')
+        return render_template('admin/presets/list.html', presets=[])
 
 def create_preset():
     form = PresetForm()
