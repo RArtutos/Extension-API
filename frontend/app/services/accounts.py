@@ -6,22 +6,8 @@ class AccountService(BaseService):
         super().__init__('/api/accounts')
     
     def get_all(self) -> List[Dict]:
-        """Get all accounts with session information"""
-        accounts = self._handle_request('get', self.endpoint + '/')
-        if not accounts:
-            return []
-            
-        # Get session info for each account
-        for account in accounts:
-            try:
-                session_info = self._handle_request('get', f"{self.endpoint}/{account['id']}/session")
-                account['active_sessions'] = session_info.get('active_sessions', 0)
-                account['max_concurrent_users'] = session_info.get('max_concurrent_users', 1)
-            except Exception:
-                account['active_sessions'] = 0
-                account['max_concurrent_users'] = 1
-                
-        return accounts
+        result = self._handle_request('get', self.endpoint + '/')
+        return result if result else []
     
     def create(self, data: Dict) -> Optional[Dict]:
         return self._handle_request('post', self.endpoint + '/', data)
@@ -38,4 +24,4 @@ class AccountService(BaseService):
     
     def get_session_info(self, account_id: int) -> Dict:
         result = self._handle_request('get', f"{self.endpoint}/{account_id}/session")
-        return result if result else {'active_sessions': 0, 'max_concurrent_users': 1}
+        return result if result else {'active_sessions': 0, 'max_concurrent_users': 0}

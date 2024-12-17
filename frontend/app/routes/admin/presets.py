@@ -31,32 +31,4 @@ class PresetViews:
                 flash(str(e), 'error')
         return render_template('admin/presets/form.html', form=form, is_edit=False)
 
-    def edit_preset(self, preset_id):
-        """Edit existing preset"""
-        preset = admin_service.get_preset(preset_id)
-        if not preset:
-            flash('Preset not found', 'error')
-            return redirect(url_for('admin.admin_list_presets'))
-
-        form = PresetForm()
-        if form.validate_on_submit():
-            try:
-                preset_data = {
-                    'name': form.name.data,
-                    'description': form.description.data,
-                    'account_ids': form.account_ids.data
-                }
-                admin_service.update_preset(preset_id, preset_data)
-                flash('Preset updated successfully', 'success')
-                return redirect(url_for('admin.admin_list_presets'))
-            except Exception as e:
-                flash(str(e), 'error')
-        else:
-            # Pre-fill form with existing data
-            form.name.data = preset['name']
-            form.description.data = preset.get('description')
-            form.account_ids.data = preset.get('account_ids', [])
-
-        return render_template('admin/presets/form.html', form=form, is_edit=True)
-
 preset_views = PresetViews()
