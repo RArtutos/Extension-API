@@ -21,6 +21,7 @@ class Api {
         const response = await fetch(`${API_URL}/api/accounts`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             },
         });
         
@@ -31,15 +32,11 @@ class Api {
         return response.json();
     }
 
-    async getSessionInfo(accountId) {
-        const token = await chrome.storage.local.get('token');
-        if (!token.token) {
-            throw new Error('No authentication token');
-        }
-
+    async getSessionInfo(accountId, token) {
         const response = await fetch(`${API_URL}/api/accounts/${accountId}/session`, {
             headers: {
-                'Authorization': `Bearer ${token.token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
 
@@ -50,16 +47,11 @@ class Api {
         return response.json();
     }
 
-    async createSession(accountId, domain) {
-        const token = await chrome.storage.local.get('token');
-        if (!token.token) {
-            throw new Error('No authentication token');
-        }
-
+    async createSession(accountId, domain, token) {
         const response = await fetch(`${API_URL}/api/sessions`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token.token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -75,16 +67,11 @@ class Api {
         return response.json();
     }
 
-    async updateSession(accountId, domain) {
-        const token = await chrome.storage.local.get('token');
-        if (!token.token) {
-            throw new Error('No authentication token');
-        }
-
+    async updateSession(accountId, domain, token) {
         const response = await fetch(`${API_URL}/api/sessions/${accountId}`, {
             method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${token.token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -99,16 +86,11 @@ class Api {
         return response.json();
     }
 
-    async removeSession(accountId, domain) {
-        const token = await chrome.storage.local.get('token');
-        if (!token.token) {
-            throw new Error('No authentication token');
-        }
-
+    async removeSession(accountId, token) {
         const response = await fetch(`${API_URL}/api/sessions/${accountId}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${token.token}`
+                'Authorization': `Bearer ${token}`
             }
         });
 
