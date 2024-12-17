@@ -19,14 +19,15 @@ class UserUpdate(UserBase):
     preset_id: Optional[int] = None
     max_devices: Optional[conint(ge=1)] = None
 
-class UserSession(BaseModel):
-    device_id: str
-    last_active: datetime
-    ip_address: str
-    user_agent: str
+class UserResponse(UserBase):
+    is_admin: bool
+    created_at: datetime
+    expires_at: Optional[datetime] = None
+    preset_id: Optional[int] = None
+    max_devices: int
+    active_sessions: int = 0
+    is_active: bool = True
+    assigned_accounts: List[int] = []
 
-class UserAnalytics(BaseModel):
-    total_logins: int
-    active_sessions: int
-    account_usage: List[dict]  # List of accounts and usage time
-    last_activities: List[dict]  # Recent activities
+    class Config:
+        from_attributes = True

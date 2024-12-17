@@ -6,6 +6,20 @@ class AnalyticsManager:
     def __init__(self):
         self.db = Database()
 
+    def get_dashboard_data(self) -> Dict:
+        """Get general analytics dashboard data"""
+        accounts = self.db.get_accounts()
+        recent_activity = self.db.get_recent_activities(limit=10)
+        
+        return {
+            "accounts": [{
+                "id": acc["id"],
+                "name": acc["name"],
+                "active_sessions": len([s for s in self.db.get_account_sessions(acc["id"]) if s["active"]])
+            } for acc in accounts],
+            "recent_activity": recent_activity
+        }
+
     def get_user_analytics(self, user_id: str) -> Dict:
         """Get analytics for a specific user"""
         sessions = self.db.get_user_sessions(user_id)
