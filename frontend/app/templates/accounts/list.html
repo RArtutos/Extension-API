@@ -15,6 +15,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Group</th>
+                        <th>Active Users</th>
                         <th>Cookies</th>
                         <th>Actions</th>
                     </tr>
@@ -24,6 +25,11 @@
                     <tr data-account-id="{{ account.id }}">
                         <td>{{ account.name }}</td>
                         <td>{{ account.group or '-' }}</td>
+                        <td>
+                            <span class="badge {% if account.active_sessions >= account.max_concurrent_users %}bg-danger{% else %}bg-success{% endif %}">
+                                {{ account.active_sessions }}/{{ account.max_concurrent_users }}
+                            </span>
+                        </td>
                         <td>{{ account.cookies|length }}</td>
                         <td>
                             <div class="btn-group" role="group">
