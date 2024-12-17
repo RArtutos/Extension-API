@@ -1,5 +1,6 @@
+"""Session repository for managing user sessions"""
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import Optional, List, Dict
 from ..base import BaseRepository
 from ...core.config import settings
 
@@ -7,15 +8,15 @@ class SessionRepository(BaseRepository):
     def __init__(self):
         super().__init__(settings.DATA_FILE)
 
-    def get_active_sessions(self, account_id: int) -> List[Dict]:
-        """Get all active sessions for an account"""
+    def get_active_sessions(self, user_id: str) -> List[Dict]:
+        """Get all active sessions for a user"""
         data = self._read_data()
         sessions = data.get("sessions", [])
         
-        # Filter active sessions for the account
+        # Filter active sessions for the user
         active_sessions = [
             session for session in sessions
-            if session.get("account_id") == account_id and
+            if session.get("user_id") == user_id and
             session.get("active", True) and
             self._is_session_active(session)
         ]
@@ -71,11 +72,19 @@ class SessionRepository(BaseRepository):
             return True
         return False
 
+    def get_session(self, session_id: str) -> Optional[Dict]:
+        """Get session by ID"""
+        data = self._read_data()
+        return next(
+            (s for s in data.get("sessions", []) if s.get("id") == session_id),
+            None
+        )
+
     def _is_session_active(self, session: Dict) -> bool:
         """Check if a session is still active based on last activity"""
         if not session.get("last_activity"):
             return False
             
         last_activity = datetime.fromisoformat(session["last_activity"])
-        timeout = datetime.utcnow() - settings.COOKIE_INACTIVITY_TIMEOUT
+        timeout = datetime.utcnow() - timedelta(minutes=settings.COOKIE_INACTIVITY_TIMEOUT)
         return last_activity > timeout

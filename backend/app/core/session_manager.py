@@ -1,15 +1,15 @@
-```python
+"""Session management module"""
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
-from .config import settings
+from typing import Optional, Dict
 from ..db.database import Database
+from ..core.config import settings
 
 class SessionManager:
     def __init__(self):
         self.db = Database()
 
     async def create_session(self, user_id: str, device_info: Dict) -> Optional[str]:
-        """Crear nueva sesión si no se excede el límite de dispositivos"""
+        """Create new session if device limit not exceeded"""
         user = self.db.get_user_by_email(user_id)
         if not user:
             return None
@@ -34,23 +34,22 @@ class SessionManager:
         return None
 
     def update_session(self, session_id: str, activity_data: Dict) -> bool:
-        """Actualizar actividad de sesión"""
+        """Update session activity"""
         return self.db.update_session_activity(session_id, activity_data)
 
-    def get_user_sessions(self, user_id: str) -> List[Dict]:
-        """Obtener sesiones activas del usuario"""
+    def get_user_sessions(self, user_id: str) -> list[Dict]:
+        """Get active sessions for user"""
         return self.db.get_active_sessions(user_id)
 
     def validate_session(self, session_id: str) -> bool:
-        """Validar si una sesión está activa y no ha expirado"""
+        """Validate if session is active and not expired"""
         session = self.db.get_session(session_id)
         if not session:
             return False
 
-        timeout = datetime.utcnow() - timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES)
+        timeout = datetime.utcnow() - timedelta(minutes=settings.COOKIE_INACTIVITY_TIMEOUT)
         return datetime.fromisoformat(session["last_activity"]) > timeout
 
     def end_session(self, session_id: str) -> bool:
-        """Finalizar una sesión"""
+        """End a session"""
         return self.db.remove_session(session_id)
-```

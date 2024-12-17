@@ -1,3 +1,4 @@
+"""Database module for handling all database operations"""
 from typing import Optional, Dict, List
 from datetime import datetime
 from .repositories.user_repository import UserRepository
@@ -16,7 +17,7 @@ class Database:
         self.analytics = AnalyticsRepository()
         self.sessions = SessionRepository()
 
-    # Delegate methods to appropriate repositories
+    # User methods
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         return self.users.get_by_email(email)
 
@@ -26,6 +27,7 @@ class Database:
     def create_user(self, user_data: Dict) -> Optional[Dict]:
         return self.users.create(user_data)
 
+    # Account methods
     def get_accounts(self, user_id: Optional[str] = None) -> List[Dict]:
         return self.accounts.get_all(user_id)
 
@@ -41,6 +43,7 @@ class Database:
     def delete_account(self, account_id: int) -> bool:
         return self.accounts.delete(account_id)
 
+    # User-Account methods
     def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
         return self.user_accounts.assign_account(user_id, account_id)
 
@@ -50,24 +53,9 @@ class Database:
     def get_user_accounts(self, user_id: str) -> List[int]:
         return self.user_accounts.get_user_accounts(user_id)
 
-    def get_presets(self) -> List[Dict]:
-        return self.presets.get_presets()
-
-    def get_preset(self, preset_id: int) -> Optional[Dict]:
-        return self.presets.get_preset(preset_id)
-
-    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
-        return self.presets.create_preset(preset_data)
-
-    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
-        return self.presets.update_preset(preset_id, preset_data)
-
-    def delete_preset(self, preset_id: int) -> bool:
-        return self.presets.delete_preset(preset_id)
-
-    # Session management methods
-    def get_active_sessions(self, account_id: int) -> List[Dict]:
-        return self.sessions.get_active_sessions(account_id)
+    # Session methods
+    def get_active_sessions(self, user_id: str) -> List[Dict]:
+        return self.sessions.get_active_sessions(user_id)
 
     def create_session(self, session_data: Dict) -> bool:
         return self.sessions.create_session(session_data)
@@ -77,3 +65,22 @@ class Database:
 
     def end_session(self, session_id: str) -> bool:
         return self.sessions.end_session(session_id)
+
+    def get_session(self, session_id: str) -> Optional[Dict]:
+        return self.sessions.get_session(session_id)
+
+    # Preset methods
+    def get_presets(self) -> List[Dict]:
+        return self.presets.get_all()
+
+    def get_preset(self, preset_id: int) -> Optional[Dict]:
+        return self.presets.get_by_id(preset_id)
+
+    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
+        return self.presets.create_preset(preset_data)
+
+    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
+        return self.presets.update_preset(preset_id, preset_data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        return self.presets.delete_preset(preset_id)
