@@ -4,6 +4,7 @@ from flask_login import login_required
 from ...core.auth import admin_required
 from ...services.admin import AdminService
 from ...forms.user import UserForm
+from ...forms.preset import PresetForm  # Add this import
 
 admin_service = AdminService()
 
@@ -36,7 +37,7 @@ def create_user():
         try:
             admin_service.create_user(form.data)
             flash('User created successfully', 'success')
-            return redirect(url_for('admin.list_users'))
+            return redirect(url_for('admin.admin_list_users'))
         except Exception as e:
             flash(str(e), 'error')
     return render_template('admin/users/form.html', form=form)
@@ -46,7 +47,7 @@ def user_accounts(user_id):
     user = admin_service.get_user(user_id)
     if not user:
         flash('User not found', 'error')
-        return redirect(url_for('admin.list_users'))
+        return redirect(url_for('admin.admin_list_users'))
         
     accounts = admin_service.get_user_accounts(user_id)
     available_accounts = admin_service.get_available_accounts()
@@ -64,20 +65,3 @@ def list_presets():
     except Exception as e:
         flash(f'Error loading presets: {str(e)}', 'error')
         return render_template('admin/presets/list.html', presets=[])
-
-def create_preset():
-    """Create new preset"""
-    form = PresetForm()
-    if form.validate_on_submit():
-        try:
-            preset_data = {
-                'name': form.name.data,
-                'description': form.description.data,
-                'account_ids': form.account_ids.data
-            }
-            admin_service.create_preset(preset_data)
-            flash('Preset created successfully', 'success')
-            return redirect(url_for('admin.list_presets'))
-        except Exception as e:
-            flash(str(e), 'error')
-    return render_template('admin/presets/form.html', form=form, is_edit=False)
