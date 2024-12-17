@@ -1,4 +1,6 @@
-// UI Class for managing the extension interface
+import { UI_CONFIG } from '../config/constants.js';
+import { accountManager } from '../accountManager.js';
+
 class UI {
   showLoginForm() {
     document.getElementById('login-form').classList.remove('hidden');
@@ -22,7 +24,7 @@ class UI {
             <div class="account-name">${account.name}</div>
             ${account.group ? `<div class="account-group">${account.group}</div>` : ''}
             <div class="session-info">
-              ${account.active_sessions}/${account.max_concurrent_users} users
+              ${account.active_sessions || 0}/${account.max_concurrent_users || 1} users
             </div>
           </div>
           <button class="switch-btn" 
@@ -37,22 +39,12 @@ class UI {
     this.attachSwitchButtonListeners();
   }
 
-  attachSwitchButtonListeners() {
-    document.querySelectorAll('.switch-btn').forEach(button => {
-      button.addEventListener('click', async (e) => {
-        const account = JSON.parse(e.target.dataset.account);
-        const { accountManager } = await import('../accountManager.js');
-        accountManager.switchAccount(account);
-      });
-    });
-  }
-
   showError(message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.textContent = message;
     document.getElementById('app').prepend(errorDiv);
-    setTimeout(() => errorDiv.remove(), 5000);
+    setTimeout(() => errorDiv.remove(), UI_CONFIG.ERROR_TIMEOUT);
   }
 
   showSuccess(message) {
@@ -60,9 +52,21 @@ class UI {
     successDiv.className = 'success-message';
     successDiv.textContent = message;
     document.getElementById('app').prepend(successDiv);
-    setTimeout(() => successDiv.remove(), 3000);
+    setTimeout(() => successDiv.remove(), UI_CONFIG.SUCCESS_TIMEOUT);
+  }
+
+  attachSwitchButtonListeners() {
+    document.querySelectorAll('.switch-btn').forEach(button => {
+      button.addEventListener('click', async (e) => {
+        const account = JSON.parse(e.target.dataset.account);
+        try {
+          await accountManager.switchAccount(account);
+        } catch (error) {
+          this.showError(error.message);
+        }
+      });
+    });
   }
 }
 
-// Export a singleton instance
 export const ui = new UI();

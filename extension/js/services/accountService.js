@@ -1,64 +1,47 @@
-import { cookieService } from './cookieService.js';
+import { API_URL } from '../config/constants.js';
 import { storage } from '../utils/storage.js';
-import { api } from '../utils/api.js';
-import { STORAGE_KEYS } from '../config.js';
+import { STORAGE_KEYS } from '../config/constants.js';
+import { httpClient } from '../utils/httpClient.js';
 
 class AccountService {
-  constructor() {
-    this.currentAccount = null;
-  }
-
   async getCurrentAccount() {
-    if (!this.currentAccount) {
-      this.currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
-    }
-    return this.currentAccount;
+    return await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
   }
 
-  async loadAccounts() {
-    const token = await storage.get(STORAGE_KEYS.TOKEN);
-    return await api.getAccounts(token);
+  async getAccounts() {
+    try {
+      const response = await httpClient.get('/api/accounts/');
+      return response;
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      throw error;
+    }
   }
 
   async switchAccount(account) {
     try {
-      // Get session info first
-      const sessionInfo = await api.getSessionInfo(account.id);
+      // Verify session limits
+      const sessionInfo = await this.getSessionInfo(account.id);
       if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
         throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
       }
 
-      // Remove current account cookies
-      const currentAccount = await this.getCurrentAccount();
-      if (currentAccount) {
-        for (const cookie of currentAccount.cookies) {
-          await cookieService.removeAllCookies(cookie.domain);
-        }
-      }
-
-      // Set new account cookies
-      for (const cookie of account.cookies) {
-        if (cookie.name === 'header_cookies') {
-          await cookieService.processHeaderString(cookie.domain, cookie.value);
-        }
-      }
-
-      // Update storage
-      this.currentAccount = account;
       await storage.set(STORAGE_KEYS.CURRENT_ACCOUNT, account);
-
-      return account;
+      return true;
     } catch (error) {
       console.error('Error switching account:', error);
       throw error;
     }
   }
 
-  getFirstDomain(account) {
-    if (account?.cookies?.length > 0) {
-      return account.cookies[0].domain.replace(/^\./, '');
+  async getSessionInfo(accountId) {
+    try {
+      const response = await httpClient.get(`/api/accounts/${accountId}/session`);
+      return response;
+    } catch (error) {
+      console.error('Error getting session info:', error);
+      throw error;
     }
-    return null;
   }
 }
 

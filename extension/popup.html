@@ -2,38 +2,35 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Gestor de Cuentas</title>
+    <title>Account Manager</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="app">
-        <!-- Formulario de Login -->
+        <!-- Login Form -->
         <div id="login-form" class="container">
             <div class="logo">
                 <img src="icons/logo.png" alt="Logo">
-                <h1>Gestor de Cuentas</h1>
+                <h1>Account Manager</h1>
             </div>
             <div class="form-group">
-                <input type="email" id="email" placeholder="Correo electrónico" required>
+                <input type="email" id="email" placeholder="Email" required>
             </div>
             <div class="form-group">
-                <input type="password" id="password" placeholder="Contraseña" required>
+                <input type="password" id="password" placeholder="Password" required>
             </div>
-            <button id="login-btn" class="btn-primary">Iniciar Sesión</button>
+            <button id="login-btn" class="btn-primary">Login</button>
         </div>
         
-        <!-- Gestor de Cuentas -->
+        <!-- Account Manager -->
         <div id="account-manager" class="container hidden">
             <div class="header">
-                <h2>Cuentas</h2>
-                <div class="user-info">
-                    <span id="user-email"></span>
-                    <button id="logout-btn" class="btn-secondary">Cerrar Sesión</button>
-                </div>
+                <h2>Accounts</h2>
+                <button id="logout-btn" class="btn-secondary">Logout</button>
             </div>
             
             <div class="search-bar">
-                <input type="text" id="search-accounts" placeholder="Buscar cuentas...">
+                <input type="text" id="search-accounts" placeholder="Search accounts...">
             </div>
             
             <div id="accounts-list" class="accounts-container"></div>
@@ -41,28 +38,15 @@
             <div class="footer">
                 <div class="status">
                     <div id="connection-status" class="status-indicator"></div>
-                    <span id="status-text">Conectado</span>
+                    <span id="status-text">Connected</span>
                 </div>
-                <button id="refresh-btn" class="btn-icon" title="Actualizar">
-                    <svg class="icon" viewBox="0 0 24 24">
-                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
-                    </svg>
-                </button>
             </div>
         </div>
     </div>
 
-    <template id="account-template">
-        <div class="account-item">
-            <div class="account-info">
-                <div class="account-name"></div>
-                <div class="account-group"></div>
-                <div class="account-status"></div>
-            </div>
-            <button class="switch-btn"></button>
-        </div>
-    </template>
-
+    <!-- Load AccountManager first -->
+    <script type="module" src="js/accountManager.js"></script>
+    <!-- Then load popup -->
     <script type="module" src="js/popup.js"></script>
 </body>
 </html>
