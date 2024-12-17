@@ -5,13 +5,14 @@ class AdminService(BaseService):
     def __init__(self):
         super().__init__('/api/admin')
 
+    def get_users(self) -> List[Dict]:
+        """Get all users"""
+        result = self._handle_request('get', f"{self.endpoint}/users")
+        return result if result else []
+
     def create_user(self, user_data: Dict) -> Optional[Dict]:
         """Create a new user"""
         return self._handle_request('post', f"{self.endpoint}/users", user_data)
-
-    def get_users(self) -> List[Dict]:
-        result = self._handle_request('get', f"{self.endpoint}/users/")
-        return result if result else []
 
     def get_presets(self) -> List[Dict]:
         """Get all presets"""
@@ -20,8 +21,7 @@ class AdminService(BaseService):
 
     def get_preset(self, preset_id: int) -> Optional[Dict]:
         """Get a specific preset"""
-        result = self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
-        return result if result else None
+        return self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
 
     def create_preset(self, preset_data: Dict) -> Optional[Dict]:
         """Create a new preset"""
