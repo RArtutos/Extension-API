@@ -1,233 +1,179 @@
-// Estado global
-let currentAccount = null;
-let proxyEnabled = false;
+import { API_URL, STORAGE_KEYS, UI_CONFIG } from './js/config.js';
+import { storage } from './js/utils/storage.js';
+import { ui } from './js/utils/ui.js';
+import { accountManager } from './js/accountManager.js';
+import { cookieService } from './js/services/cookieService.js';
 
-// Elementos DOM
-const loginForm = document.getElementById('login-form');
-const accountManager = document.getElementById('account-manager');
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const useProxyCheckbox = document.getElementById('use-proxy');
-const accountsList = document.getElementById('accounts-list');
-
-// Verificar estado de autenticación al cargar
-chrome.storage.local.get(['token'], function(result) {
-  if (result.token) {
-    showAccountManager();
-    loadAccounts();
-  } else {
-    showLoginForm();
+class PopupManager {
+  constructor() {
+    this.initialized = false;
+    this.refreshInterval = null;
   }
-});
 
-// Event Listeners
-loginBtn.addEventListener('click', async () => {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+  async init() {
+    if (this.initialized) return;
+    
+    this.attachEventListeners();
+    await this.checkAuthState();
+    this.initialized = true;
+  }
 
-  try {
-    const response = await fetch('http://84.46.249.121:8000/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
-    });
+  attachEventListeners() {
+    // Login form
+    document.getElementById('login-btn')?.addEventListener('click', () => this.handleLogin());
+    
+    // Logout button
+    document.getElementById('logout-btn')?.addEventListener('click', () => this.handleLogout());
+    
+    // Proxy toggle
+    document.getElementById('use-proxy')?.addEventListener('change', (e) => this.handleProxyToggle(e));
+    
+    // Close button
+    document.getElementById('close-btn')?.addEventListener('click', () => window.close());
+  }
 
-    const data = await response.json();
-    if (data.access_token) {
-      chrome.storage.local.set({ token: data.access_token }, function() {
-        showAccountManager();
-        loadAccounts();
-      });
+  async checkAuthState() {
+    const token = await storage.get(STORAGE_KEYS.TOKEN);
+    if (token) {
+      await this.showAccountManager();
     } else {
-      throw new Error('Invalid credentials');
+      ui.showLoginForm();
     }
-  } catch (error) {
-    console.error('Login failed:', error);
-    alert('Login failed. Please check your credentials and try again.');
   }
-});
 
-logoutBtn.addEventListener('click', () => {
-  chrome.storage.local.remove(['token', 'currentAccount'], function() {
-    showLoginForm();
-  });
-});
+  async handleLogin() {
+    const email = document.getElementById('email')?.value;
+    const password = document.getElementById('password')?.value;
 
-useProxyCheckbox.addEventListener('change', (e) => {
-  proxyEnabled = e.target.checked;
-  if (currentAccount) {
-    updateProxy();
-  }
-});
+    if (!email || !password) {
+      ui.showError('Please enter both email and password');
+      return;
+    }
 
-// Funciones auxiliares
-function showLoginForm() {
-  loginForm.classList.remove('hidden');
-  accountManager.classList.add('hidden');
-}
-
-function showAccountManager() {
-  loginForm.classList.add('hidden');
-  accountManager.classList.remove('hidden');
-}
-
-async function loadAccounts() {
-  try {
-    const token = await new Promise(resolve => {
-      chrome.storage.local.get(['token'], result => resolve(result.token));
-    });
-
-    const response = await fetch('http://84.46.249.121:8000/api/accounts', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    const accounts = await response.json();
-    updateAccountsListUI(accounts);
-
-    // Cargar cuenta actual
-    chrome.storage.local.get(['currentAccount'], result => {
-      currentAccount = result.currentAccount;
-      if (currentAccount) {
-        updateAccountsListUI(accounts);
-      }
-    });
-  } catch (error) {
-    console.error('Failed to load accounts:', error);
-    alert('Failed to load accounts. Please try again.');
-  }
-}
-
-async function setCookie(domain, name, value) {
-  const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
-  const url = `https://${cleanDomain}`;
-  
-  try {
-    await chrome.cookies.set({
-      url: url,
-      name: name,
-      value: value,
-      path: '/',
-      secure: true,
-      sameSite: 'lax',
-      domain: domain // Keep the original domain with dot if present
-    });
-  } catch (error) {
-    // If first attempt fails, try with more permissive settings
     try {
-      await chrome.cookies.set({
-        url: url,
-        name: name,
-        value: value,
-        path: '/',
-        secure: false,
-        sameSite: 'no_restriction',
-        domain: cleanDomain // Try without the leading dot
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
       });
-    } catch (retryError) {
-      console.error(`Error setting cookie ${name}:`, retryError);
-      // Don't throw the error to continue with other cookies
+
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
+
+      const data = await response.json();
+      if (!data.access_token) {
+        throw new Error('Invalid response from server');
+      }
+
+      await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
+      await this.showAccountManager();
+      ui.showSuccess('Login successful');
+    } catch (error) {
+      console.error('Login failed:', error);
+      ui.showError('Login failed. Please check your credentials and try again.');
     }
   }
-}
 
-async function switchAccount(account) {
-  try {
-    currentAccount = account;
-    chrome.storage.local.set({ currentAccount: account });
+  async handleLogout() {
+    try {
+      // Clear current account cookies
+      const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
+      if (currentAccount) {
+        await cookieService.removeAllCookies(currentAccount.domain);
+      }
 
-    // Process cookies
-    for (const cookie of account.cookies) {
-      const domain = cookie.domain;
+      // Clear storage
+      await storage.remove([
+        STORAGE_KEYS.TOKEN,
+        STORAGE_KEYS.CURRENT_ACCOUNT,
+        STORAGE_KEYS.PROXY_ENABLED,
+        STORAGE_KEYS.USER_SETTINGS
+      ]);
+
+      // Stop refresh interval
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+        this.refreshInterval = null;
+      }
+
+      ui.showLoginForm();
+      ui.showSuccess('Logged out successfully');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      ui.showError('Error during logout');
+    }
+  }
+
+  async handleProxyToggle(event) {
+    try {
+      await storage.set(STORAGE_KEYS.PROXY_ENABLED, event.target.checked);
+      ui.showSuccess(`Proxy ${event.target.checked ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error toggling proxy:', error);
+      ui.showError('Failed to toggle proxy');
+      event.target.checked = !event.target.checked; // Revert the toggle
+    }
+  }
+
+  async showAccountManager() {
+    try {
+      ui.showAccountManager();
+      await this.loadAccounts();
       
-      // First remove existing cookies
-      const existingCookies = await chrome.cookies.getAll({ domain });
-      for (const existing of existingCookies) {
-        try {
-          const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
-          await chrome.cookies.remove({
-            url: `https://${cleanDomain}`,
-            name: existing.name
-          });
-        } catch (error) {
-          console.warn(`Error removing cookie ${existing.name}:`, error);
-        }
+      // Start auto-refresh if enabled
+      if (UI_CONFIG.REFRESH_INTERVAL) {
+        this.refreshInterval = setInterval(() => this.loadAccounts(), UI_CONFIG.REFRESH_INTERVAL);
+      }
+    } catch (error) {
+      console.error('Error showing account manager:', error);
+      ui.showError('Error loading account manager');
+    }
+  }
+
+  async loadAccounts() {
+    try {
+      const token = await storage.get(STORAGE_KEYS.TOKEN);
+      if (!token) {
+        throw new Error('No authentication token found');
       }
 
-      // Process header string cookies
-      if (cookie.name === 'header_cookies') {
-        const cookieString = cookie.value;
-        const cookiePairs = cookieString.split(';');
-        
-        for (const pair of cookiePairs) {
-          const trimmedPair = pair.trim();
-          if (!trimmedPair) continue;
+      const response = await fetch(`${API_URL}/api/accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-          const firstEquals = trimmedPair.indexOf('=');
-          if (firstEquals === -1) continue;
+      if (!response.ok) {
+        throw new Error('Failed to load accounts');
+      }
 
-          const name = trimmedPair.substring(0, firstEquals).trim();
-          const value = trimmedPair.substring(firstEquals + 1).trim();
-
-          if (!name || !value) continue;
-
-          // Set each cookie individually
-          await setCookie(domain, name, value);
-        }
+      const accounts = await response.json();
+      const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
+      
+      ui.updateAccountsList(accounts, currentAccount);
+    } catch (error) {
+      console.error('Failed to load accounts:', error);
+      if (error.message.includes('authentication')) {
+        await this.handleLogout();
+      } else {
+        ui.showError('Failed to load accounts. Please try again.');
       }
     }
-
-    // Open first page
-    if (account.cookies && account.cookies.length > 0) {
-      const firstDomain = account.cookies[0].domain;
-      const url = `https://${firstDomain.replace(/^\./, '')}`;
-      chrome.tabs.create({ url });
-    }
-
-    // Update UI
-    const token = await new Promise(resolve => {
-      chrome.storage.local.get(['token'], result => resolve(result.token));
-    });
-    
-    const response = await fetch('http://84.46.249.121:8000/api/accounts', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    const accounts = await response.json();
-    updateAccountsListUI(accounts);
-
-    alert('Account switched successfully');
-  } catch (error) {
-    console.error('Error switching account:', error);
-    alert('Error switching account: ' + error.message);
   }
 }
 
-function updateAccountsListUI(accounts) {
-  accountsList.innerHTML = accounts.map(account => {
-    const isActive = currentAccount && currentAccount.name === account.name;
-    return `
-      <div class="account-item ${isActive ? 'active' : ''}">
-        <span>${account.name}</span>
-        <button class="switch-btn" data-account='${JSON.stringify(account)}'>Switch</button>
-      </div>
-    `;
-  }).join('');
+// Initialize popup
+const popupManager = new PopupManager();
+document.addEventListener('DOMContentLoaded', () => popupManager.init());
 
-  // Agregar event listeners a los botones
-  document.querySelectorAll('.switch-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const account = JSON.parse(e.target.dataset.account);
-      switchAccount(account);
-    });
-  });
-}
-
-async function updateProxy() {
-  console.log('Updating proxy settings...');
-}
+// Handle messages from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'SESSION_EXPIRED') {
+    ui.showError('Session expired. Please login again.');
+    popupManager.handleLogout();
+  }
+  sendResponse({ received: true });
+});
