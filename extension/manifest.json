@@ -7,13 +7,12 @@
     "storage",
     "cookies",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "proxy"
   ],
   "host_permissions": [
-    "*://*/*",
-    "https://*/*"
+    "<all_urls>"
   ],
-  "optional_permissions": [],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
@@ -21,7 +20,7 @@
     "default_popup": "popup.html"
   },
   "background": {
-    "service_worker": "js/background.js",
+    "service_worker": "background.js",
     "type": "module"
   }
 }

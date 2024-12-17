@@ -6,11 +6,6 @@ class CookieManager {
     }
 
     try {
-      const permissions = await this.requestPermissions();
-      if (!permissions) {
-        throw new Error('Cookie permissions not granted');
-      }
-
       for (const cookie of account.cookies) {
         const domain = cookie.domain;
         
@@ -27,25 +22,6 @@ class CookieManager {
     } catch (error) {
       console.error('Error setting account cookies:', error);
       throw new Error('Failed to set account cookies');
-    }
-  }
-
-  async requestPermissions() {
-    try {
-      return await chrome.permissions.request({
-        permissions: ['cookies'],
-        origins: ['<all_urls>']
-      });
-    } catch (error) {
-      console.error('Error requesting permissions:', error);
-      return false;
-    }
-  }
-
-  async setHeaderCookies(domain, cookieString) {
-    const cookies = this.parseHeaderString(cookieString);
-    for (const cookie of cookies) {
-      await this.setCookie(domain, cookie.name, cookie.value);
     }
   }
 
@@ -103,6 +79,13 @@ class CookieManager {
       } catch (error) {
         console.warn(`Error removing cookie ${cookie.name}:`, error);
       }
+    }
+  }
+
+  async setHeaderCookies(domain, cookieString) {
+    const cookies = this.parseHeaderString(cookieString);
+    for (const cookie of cookies) {
+      await this.setCookie(domain, cookie.name, cookie.value);
     }
   }
 
