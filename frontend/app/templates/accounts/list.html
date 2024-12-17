@@ -30,6 +30,9 @@
                                 <button type="button" class="btn btn-sm btn-info" onclick='viewCookies({{ account.cookies|tojson|safe }})'>
                                     <i class="bi bi-eye"></i> View
                                 </button>
+                                <a href="{{ url_for('analytics.account_analytics', account_id=account.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-graph-up"></i> Analytics
+                                </a>
                                 <a href="{{ url_for('accounts.edit', account_id=account.id) }}" class="btn btn-sm btn-warning">
                                     <i class="bi bi-pencil"></i> Edit
                                 </a>
