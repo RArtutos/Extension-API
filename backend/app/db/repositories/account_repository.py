@@ -8,18 +8,34 @@ class AccountRepository(BaseRepository):
 
     def get_all(self, user_id: Optional[str] = None) -> List[Dict]:
         data = self._read_data()
+        accounts = data.get("accounts", [])
+        
+        # Filter by user if specified
         if user_id:
-            user_account_ids = [ua["account_id"] for ua in data.get("user_accounts", []) 
-                              if ua["user_id"] == user_id]
-            return [acc for acc in data.get("accounts", []) if acc["id"] in user_account_ids]
-        return data.get("accounts", [])
+            user_account_ids = [
+                ua["account_id"] for ua in data.get("user_accounts", []) 
+                if ua["user_id"] == user_id
+            ]
+            accounts = [acc for acc in accounts if acc["id"] in user_account_ids]
+        
+        # Ensure max_concurrent_users is set
+        for account in accounts:
+            if "max_concurrent_users" not in account:
+                account["max_concurrent_users"] = 1
+            
+        return accounts
 
     def get_by_id(self, account_id: int) -> Optional[Dict]:
         data = self._read_data()
-        return next(
+        account = next(
             (acc for acc in data.get("accounts", []) if acc["id"] == account_id),
             None
         )
+        
+        if account and "max_concurrent_users" not in account:
+            account["max_concurrent_users"] = 1
+            
+        return account
 
     def create(self, account_data: Dict) -> Dict:
         data = self._read_data()
@@ -27,6 +43,11 @@ class AccountRepository(BaseRepository):
             data["accounts"] = []
             
         account_id = max([a.get("id", 0) for a in data["accounts"]], default=0) + 1
+        
+        # Ensure max_concurrent_users is set
+        if "max_concurrent_users" not in account_data:
+            account_data["max_concurrent_users"] = 1
+            
         account = {
             "id": account_id,
             **account_data
@@ -46,26 +67,12 @@ class AccountRepository(BaseRepository):
         
         if account_index is not None:
             account = data["accounts"][account_index]
+            
+            # Preserve max_concurrent_users if not provided
+            if "max_concurrent_users" not in account_data:
+                account_data["max_concurrent_users"] = account.get("max_concurrent_users", 1)
+                
             account.update(account_data)
             self._write_data(data)
             return account
         return None
-
-    def delete(self, account_id: int) -> bool:
-        data = self._read_data()
-        initial_count = len(data.get("accounts", []))
-        
-        data["accounts"] = [
-            a for a in data.get("accounts", [])
-            if a["id"] != account_id
-        ]
-        
-        data["user_accounts"] = [
-            ua for ua in data.get("user_accounts", [])
-            if ua["account_id"] != account_id
-        ]
-        
-        if len(data["accounts"]) < initial_count:
-            self._write_data(data)
-            return True
-        return False

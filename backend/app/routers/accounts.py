@@ -25,10 +25,12 @@ async def get_session_info(account_id: int, current_user: dict = Depends(get_cur
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    sessions = db.get_active_sessions(account_id)
+    active_sessions = db.get_active_sessions(account_id)
+    max_users = account.get("max_concurrent_users", 1)
+    
     return {
-        "active_sessions": len(sessions),
-        "max_concurrent_users": account.get("max_concurrent_users", settings.MAX_CONCURRENT_USERS_PER_ACCOUNT)
+        "active_sessions": len(active_sessions),
+        "max_concurrent_users": max_users
     }
 
 @router.post("/", response_model=Account)
@@ -50,13 +52,3 @@ async def update_account(account_id: int, account: AccountCreate, current_user: 
     if not updated_account:
         raise HTTPException(status_code=404, detail="Account not found")
     return updated_account
-
-@router.delete("/{account_id}")
-async def delete_account(account_id: int, current_user: dict = Depends(get_current_user)):
-    if not current_user["is_admin"]:
-        raise HTTPException(status_code=403, detail="Not enough privileges")
-        
-    if not db.delete_account(account_id):
-        raise HTTPException(status_code=404, detail="Account not found")
-        
-    return {"message": "Account deleted"}

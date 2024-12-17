@@ -5,6 +5,7 @@ from .repositories.account_repository import AccountRepository
 from .repositories.user_account_repository import UserAccountRepository
 from .repositories.preset_repository import PresetRepository
 from .repositories.analytics_repository import AnalyticsRepository
+from .repositories.session_repository import SessionRepository
 
 class Database:
     def __init__(self):
@@ -13,6 +14,7 @@ class Database:
         self.user_accounts = UserAccountRepository()
         self.presets = PresetRepository()
         self.analytics = AnalyticsRepository()
+        self.sessions = SessionRepository()
 
     # Delegate methods to appropriate repositories
     def get_user_by_email(self, email: str) -> Optional[Dict]:
@@ -62,3 +64,16 @@ class Database:
 
     def delete_preset(self, preset_id: int) -> bool:
         return self.presets.delete_preset(preset_id)
+
+    # Session management methods
+    def get_active_sessions(self, account_id: int) -> List[Dict]:
+        return self.sessions.get_active_sessions(account_id)
+
+    def create_session(self, session_data: Dict) -> bool:
+        return self.sessions.create_session(session_data)
+
+    def update_session_activity(self, session_id: str, activity_data: Dict) -> bool:
+        return self.sessions.update_session_activity(session_id, activity_data)
+
+    def end_session(self, session_id: str) -> bool:
+        return self.sessions.end_session(session_id)
