@@ -8,7 +8,7 @@ class AnalyticsService(BaseService):
 
     def get_dashboard(self) -> Dict:
         """Get analytics dashboard data"""
-        return self._handle_request('get', '/') or {
+        return self._handle_request('get', '/api/admin/analytics') or {
             'accounts': [],
             'recent_activity': []
         }
