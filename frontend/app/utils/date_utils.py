@@ -2,10 +2,17 @@
 from datetime import datetime
 from typing import Optional
 
-def format_datetime(dt: Optional[datetime]) -> str:
+def format_datetime(dt: Optional[datetime | str]) -> str:
     """Format datetime for display"""
     if not dt:
         return "Never"
+    
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt)
+        except (ValueError, TypeError):
+            return dt
+            
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 def get_expiration_status(expires_at: Optional[datetime]) -> tuple:
