@@ -8,15 +8,24 @@ class AnalyticsManager:
 
     def get_dashboard_data(self) -> Dict:
         """Get general analytics dashboard data"""
-        accounts = self.db.get_account_users()
+        # Get all accounts first
+        accounts = []
+        account_ids = self.db.get_all_account_ids()
+        
+        for account_id in account_ids:
+            account_users = self.db.get_account_users(account_id)
+            account_sessions = self.db.get_account_sessions(account_id)
+            
+            accounts.append({
+                "id": account_id,
+                "name": self.db.get_account_name(account_id),
+                "active_sessions": len([s for s in account_sessions if s.get("active", False)])
+            })
+        
         recent_activity = self.db.get_recent_activities(limit=10)
         
         return {
-            "accounts": [{
-                "id": acc["id"],
-                "name": acc["name"],
-                "active_sessions": len([s for s in self.db.get_account_sessions(acc["id"]) if s.get("active", False)])
-            } for acc in accounts],
+            "accounts": accounts,
             "recent_activity": recent_activity
         }
 
