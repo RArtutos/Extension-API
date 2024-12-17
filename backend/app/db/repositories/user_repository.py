@@ -13,17 +13,15 @@ class UserRepository(BaseRepository):
         users = data.get("users", [])
         
         for user in users:
-            # Convert string timestamps to datetime objects
             if isinstance(user.get("created_at"), str):
                 user["created_at"] = datetime.fromisoformat(user["created_at"])
             if user.get("expires_at") and isinstance(user["expires_at"], str):
                 user["expires_at"] = datetime.fromisoformat(user["expires_at"])
             
-            # Add required fields
-            user["is_active"] = True if not user.get("expires_at") else datetime.utcnow() < user["expires_at"]
-            user["max_devices"] = user.get("max_devices", 1)
-            user["active_sessions"] = len([s for s in data.get("sessions", []) 
-                                         if s["user_id"] == user["email"] and s.get("active", True)])
+            user["is_active"] = True
+            if user.get("expires_at"):
+                user["is_active"] = datetime.utcnow() < user["expires_at"]
+            
             user["assigned_accounts"] = [
                 ua["account_id"] for ua in data.get("user_accounts", [])
                 if ua["user_id"] == user["email"]
@@ -40,14 +38,32 @@ class UserRepository(BaseRepository):
                 expires_at = datetime.fromisoformat(user["expires_at"])
                 if datetime.utcnow() > expires_at:
                     return None
-            
-            # Add required fields
-            user["max_devices"] = user.get("max_devices", 1)
-            user["active_sessions"] = len([s for s in data.get("sessions", []) 
-                                         if s["user_id"] == email and s.get("active", True)])
+                    
             user["assigned_accounts"] = [
                 ua["account_id"] for ua in data.get("user_accounts", [])
                 if ua["user_id"] == email
             ]
-            
         return user
+
+    def create(self, user_data: Dict) -> Optional[Dict]:
+        data = self._read_data()
+        if "users" not in data:
+            data["users"] = []
+
+        # Process expiration
+        expires_in_days = user_data.pop("expires_in_days", None)
+        if expires_in_days:
+            user_data["expires_at"] = (datetime.utcnow() + timedelta(days=expires_in_days)).isoformat()
+        else:
+            user_data["expires_at"] = None
+
+        # Hash password if provided
+        if "password" in user_data:
+            user_data["password"] = get_password_hash(user_data["password"])
+
+        # Set creation timestamp
+        user_data["created_at"] = datetime.utcnow().isoformat()
+
+        data["users"].append(user_data)
+        self._write_data(data)
+        return user_data

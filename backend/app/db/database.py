@@ -15,18 +15,33 @@ class Database:
         self.presets = PresetRepository()
         self.analytics = AnalyticsRepository()
 
+    # User methods
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         return self.users.get_by_email(email)
 
-    def get_users(self):
+    def get_users(self) -> List[Dict]:
         return self.users.get_all()
 
-    def get_accounts(self, user_id: Optional[str] = None):
+    def create_user(self, user_data: Dict) -> Optional[Dict]:
+        return self.users.create(user_data)
+
+    # Account methods
+    def get_accounts(self, user_id: Optional[str] = None) -> List[Dict]:
         return self.accounts.get_all(user_id)
 
-    def get_account(self, account_id: int):
+    def get_account(self, account_id: int) -> Optional[Dict]:
         return self.accounts.get_by_id(account_id)
 
+    def create_account(self, account_data: Dict) -> Optional[Dict]:
+        return self.accounts.create(account_data)
+
+    def update_account(self, account_id: int, account_data: Dict) -> Optional[Dict]:
+        return self.accounts.update(account_id, account_data)
+
+    def delete_account(self, account_id: int) -> bool:
+        return self.accounts.delete(account_id)
+
+    # Preset methods
     def get_presets(self) -> List[Dict]:
         return self.presets.get_presets()
 
@@ -42,6 +57,17 @@ class Database:
     def delete_preset(self, preset_id: int) -> bool:
         return self.presets.delete_preset(preset_id)
 
+    # User-Account methods
+    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
+        return self.user_accounts.assign_account(user_id, account_id)
+
+    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
+        return self.user_accounts.remove_account(user_id, account_id)
+
+    def get_user_accounts(self, user_id: str) -> List[int]:
+        return self.user_accounts.get_user_accounts(user_id)
+
+    # Analytics methods
     def get_recent_activities(self, limit: int = 10) -> List[Dict]:
         return self.analytics.get_recent_activities(limit)
 
