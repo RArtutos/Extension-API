@@ -17,8 +17,30 @@ class AdminService(BaseService):
         return next((user for user in users if user['email'] == user_id), None)
 
     def create_user(self, user_data: Dict) -> Optional[Dict]:
-        """Create a new user"""
-        return self._handle_request('post', f"{self.endpoint}/users", user_data)
+        """Create a new user and assign preset accounts if specified"""
+        # Asegurarse de que preset_id sea un entero si existe
+        if 'preset_id' in user_data:
+            try:
+                user_data['preset_id'] = int(user_data['preset_id'])
+                if user_data['preset_id'] == 0:
+                    del user_data['preset_id']
+            except (ValueError, TypeError):
+                del user_data['preset_id']
+
+        # Crear el usuario
+        created_user = self._handle_request('post', f"{self.endpoint}/users", user_data)
+        
+        # Si se creó el usuario y hay un preset_id válido, asignar las cuentas
+        if created_user and 'preset_id' in user_data and user_data['preset_id']:
+            try:
+                preset = self.get_preset(user_data['preset_id'])
+                if preset and preset.get('account_ids'):
+                    for account_id in preset['account_ids']:
+                        self.assign_account_to_user(created_user['email'], account_id)
+            except Exception as e:
+                print(f"Error assigning preset accounts: {str(e)}")
+                
+        return created_user
 
     def delete_user(self, user_id: str) -> bool:
         """Delete a user"""

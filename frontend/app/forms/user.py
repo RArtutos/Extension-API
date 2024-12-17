@@ -26,3 +26,18 @@ class UserForm(FlaskForm):
             self.preset_id.choices = [(0, 'None')] + [(p['id'], p['name']) for p in presets]
         except Exception:
             self.preset_id.choices = [(0, 'None')]
+            
+    def get_data(self):
+        """Get form data in the format expected by the API"""
+        data = {
+            'email': self.email.data,
+            'password': self.password.data,
+            'is_admin': self.is_admin.data,
+            'max_devices': self.max_devices.data,
+            'expires_in_days': self.expires_in_days.data
+        }
+        
+        if self.preset_id.data and self.preset_id.data != 0:
+            data['preset_id'] = self.preset_id.data
+            
+        return data
