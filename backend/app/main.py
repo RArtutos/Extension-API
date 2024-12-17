@@ -27,12 +27,3 @@ app.include_router(users.router, prefix=f"{admin_prefix}/users", tags=["admin-us
 app.include_router(admin_analytics.router, prefix=f"{admin_prefix}/analytics", tags=["admin-analytics"])
 app.include_router(presets.router, prefix=f"{admin_prefix}/presets", tags=["admin-presets"])
 app.include_router(admin_accounts.router, prefix=f"{admin_prefix}/accounts", tags=["admin-accounts"])
-
-@app.on_event("startup")
-async def startup_event():
-    settings.init_data_file()
-
-# Add root endpoint
-@app.get("/")
-async def root():
-    return {"message": "Account Manager API"}
