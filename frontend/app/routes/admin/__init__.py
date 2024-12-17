@@ -26,6 +26,15 @@ bp.add_url_rule('/users/create', 'admin_create_user',
                 methods=['GET', 'POST'])
 bp.add_url_rule('/users/<user_id>/accounts', 'admin_user_accounts',
                 view_func=login_required(admin_required(user_views.user_accounts)))
+bp.add_url_rule('/users/<user_id>/accounts/<int:account_id>', 'admin_assign_account',
+                view_func=login_required(admin_required(user_views.assign_account)),
+                methods=['POST'])
+bp.add_url_rule('/users/<user_id>/accounts/<int:account_id>', 'admin_remove_account',
+                view_func=login_required(admin_required(user_views.remove_account)),
+                methods=['DELETE'])
+bp.add_url_rule('/users/<user_id>', 'admin_delete_user',
+                view_func=login_required(admin_required(user_views.delete_user)),
+                methods=['DELETE'])
 
 # Preset management routes
 bp.add_url_rule('/presets', 'admin_list_presets',

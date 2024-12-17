@@ -20,6 +20,11 @@ class AdminService(BaseService):
         """Create a new user"""
         return self._handle_request('post', f"{self.endpoint}/users", user_data)
 
+    def delete_user(self, user_id: str) -> bool:
+        """Delete a user"""
+        result = self._handle_request('delete', f"{self.endpoint}/users/{user_id}")
+        return bool(result)
+
     def get_user_accounts(self, user_id: str) -> List[Dict]:
         """Get accounts assigned to a user"""
         result = self._handle_request('get', f"{self.endpoint}/users/{user_id}/accounts")
