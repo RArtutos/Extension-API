@@ -11,8 +11,12 @@ user_service = UserService()
 @admin_required
 def list_users():
     """List all users"""
-    users = user_service.get_all()
-    return render_template('admin/users/list.html', users=users)
+    try:
+        users = user_service.get_all()
+        return render_template('admin/users/list.html', users=users)
+    except Exception as e:
+        flash(f'Error loading users: {str(e)}', 'error')
+        return render_template('admin/users/list.html', users=[])
 
 @bp.route('/create', methods=['GET', 'POST'])
 @admin_required
@@ -26,7 +30,7 @@ def create_user():
                 'password': form.password.data,
                 'is_admin': form.is_admin.data,
                 'max_devices': form.max_devices.data,
-                'expires_in_days': form.expires_in_days.data,
+                'expires_in_days': form.expires_in_days.data or None,
                 'preset_id': form.preset_id.data if form.preset_id.data != 0 else None
             }
             
@@ -43,18 +47,22 @@ def create_user():
 @admin_required
 def user_accounts(user_id: str):
     """Manage user accounts"""
-    user = user_service.get_by_id(user_id)
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('admin.users.list_users'))
+    try:
+        user = user_service.get_by_id(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('admin.users.list_users'))
+            
+        accounts = user_service.get_accounts(user_id)
+        available_accounts = user_service.get_available_accounts()
         
-    accounts = user_service.get_accounts(user_id)
-    available_accounts = user_service.get_available_accounts()
-    
-    return render_template('admin/users/accounts.html', 
-                         user=user, 
-                         accounts=accounts,
-                         available_accounts=available_accounts)
+        return render_template('admin/users/accounts.html', 
+                             user=user, 
+                             accounts=accounts,
+                             available_accounts=available_accounts)
+    except Exception as e:
+        flash(f'Error loading user accounts: {str(e)}', 'error')
+        return redirect(url_for('admin.users.list_users'))
 
 @bp.route('/<user_id>/accounts/<int:account_id>', methods=['POST'])
 @admin_required

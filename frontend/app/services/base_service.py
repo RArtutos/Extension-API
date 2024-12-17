@@ -22,6 +22,12 @@ class BaseService:
             url = f"{self.base_url}{endpoint}"
             headers = self._get_headers()
             
+            if current_app:
+                current_app.logger.debug(f"Making {method.upper()} request to: {url}")
+                current_app.logger.debug(f"Headers: {headers}")
+                if data:
+                    current_app.logger.debug(f"Data: {data}")
+            
             if method == 'get':
                 response = requests.get(url, headers=headers, params=params)
             elif method == 'post':
@@ -32,13 +38,6 @@ class BaseService:
                 response = requests.delete(url, headers=headers)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
-
-            # Log request details for debugging
-            if current_app:
-                current_app.logger.debug(f"Request: {method.upper()} {url}")
-                current_app.logger.debug(f"Headers: {headers}")
-                if data:
-                    current_app.logger.debug(f"Data: {data}")
             
             response.raise_for_status()
             return response.json() if response.content else None
