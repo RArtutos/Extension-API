@@ -5,6 +5,10 @@ class AdminService(BaseService):
     def __init__(self):
         super().__init__('/api/admin')
 
+    def create_user(self, user_data: Dict) -> Optional[Dict]:
+        """Create a new user"""
+        return self._handle_request('post', f"{self.endpoint}/users", user_data)
+
     def get_users(self) -> List[Dict]:
         result = self._handle_request('get', f"{self.endpoint}/users/")
         return result if result else []
