@@ -16,6 +16,7 @@
                         <th>Name</th>
                         <th>Group</th>
                         <th>Cookies</th>
+                        <th>Users</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -25,6 +26,11 @@
                         <td>{{ account.name }}</td>
                         <td>{{ account.group or '-' }}</td>
                         <td>{{ account.cookies|length }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if account.get('active_sessions', 0) < account.get('max_concurrent_users', 1) else 'danger' }}">
+                                {{ account.get('active_sessions', 0) }}/{{ account.get('max_concurrent_users', 1) }}
+                            </span>
+                        </td>
                         <td>
                             <div class="btn-group" role="group">
                                 <button type="button" class="btn btn-sm btn-info" onclick='viewCookies({{ account.cookies|tojson|safe }})'>
@@ -131,5 +137,21 @@ async function deleteAccount(accountId) {
         document.querySelector('.container').insertBefore(alert, document.querySelector('.card'));
     }
 }
+
+// Auto-refresh de la tabla cada 30 segundos
+setInterval(() => {
+    fetch(window.location.href)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTable = doc.querySelector('.table-responsive');
+            const currentTable = document.querySelector('.table-responsive');
+            if (newTable && currentTable) {
+                currentTable.innerHTML = newTable.innerHTML;
+            }
+        })
+        .catch(console.error);
+}, 30000);
 </script>
 {% endblock %}
