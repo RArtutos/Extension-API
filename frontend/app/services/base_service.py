@@ -19,6 +19,10 @@ class BaseService:
     def _handle_request(self, method: str, endpoint: str, data: Dict = None, params: Dict = None) -> Any:
         """Handle API request with error handling"""
         try:
+            # Ensure endpoint starts with /api
+            if not endpoint.startswith('/api'):
+                endpoint = f'/api{endpoint}'
+
             url = f"{self.base_url}{endpoint}"
             headers = self._get_headers()
             
