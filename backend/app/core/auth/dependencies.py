@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from typing import Optional
 from ..config import settings
 from .token import decode_access_token
-from ...db.database import Database
+from ...db import Database  # Updated import
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 db = Database()
