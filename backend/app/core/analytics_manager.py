@@ -15,7 +15,7 @@ class AnalyticsManager:
             "accounts": [{
                 "id": acc["id"],
                 "name": acc["name"],
-                "active_sessions": len([s for s in self.db.get_account_sessions(acc["id"]) if s["active"]])
+                "active_sessions": len([s for s in self.db.get_account_sessions(acc["id"]) if s.get("active", False)])
             } for acc in accounts],
             "recent_activity": recent_activity
         }
@@ -27,10 +27,10 @@ class AnalyticsManager:
         
         return {
             "user_id": user_id,
-            "total_time": sum(s["duration"] for s in sessions if s.get("duration")),
+            "total_time": sum(s.get("duration", 0) for s in sessions),
             "total_sessions": len(sessions),
-            "current_sessions": len([s for s in sessions if s["active"]]),
-            "last_activity": max((s["last_activity"] for s in sessions), default=None),
+            "current_sessions": len([s for s in sessions if s.get("active", False)]),
+            "last_activity": max((s.get("last_activity") for s in sessions), default=None),
             "account_usage": account_usage
         }
 
@@ -42,9 +42,9 @@ class AnalyticsManager:
         return {
             "account_id": account_id,
             "total_users": len(users),
-            "active_users": len([u for u in users if u["active"]]),
+            "active_users": len([u for u in users if u.get("is_active", False)]),
             "total_sessions": len(sessions),
-            "current_sessions": len([s for s in sessions if s["active"]]),
+            "current_sessions": len([s for s in sessions if s.get("active", False)]),
             "usage_by_domain": self._aggregate_domain_usage(sessions),
             "user_activities": self._get_recent_activities(account_id)
         }
