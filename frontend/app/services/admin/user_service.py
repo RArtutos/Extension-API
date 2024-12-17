@@ -8,7 +8,23 @@ class UserService(BaseService):
 
     def get_all(self) -> List[Dict]:
         """Get all users"""
-        return self._handle_request('get', '/') or []
+        try:
+            users = self._handle_request('get', '/') or []
+            return [self._ensure_user_format(user) for user in users]
+        except Exception as e:
+            print(f"Error fetching users: {str(e)}")
+            return []
+
+    def _ensure_user_format(self, user) -> Dict:
+        """Ensure user data is in the correct format"""
+        if isinstance(user, str):
+            return {
+                'email': user,
+                'is_admin': False,
+                'is_active': True,
+                'expires_at': None
+            }
+        return user
 
     def get_by_id(self, user_id: str) -> Optional[Dict]:
         """Get user by ID"""
@@ -16,11 +32,8 @@ class UserService(BaseService):
 
     def create(self, user_data: Dict) -> Optional[Dict]:
         """Create a new user"""
-        # Handle preset_id
         if user_data.get('preset_id') == 0:
             user_data['preset_id'] = None
-            
-        # Create user with preset information
         return self._handle_request('post', '/create', user_data)
 
     def get_accounts(self, user_id: str) -> List[Dict]:
