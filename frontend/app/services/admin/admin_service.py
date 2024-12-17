@@ -50,6 +50,27 @@ class AdminService(BaseService):
             print(f"Error removing account: {str(e)}")
             return False
 
+    def get_presets(self) -> List[Dict]:
+        """Get all presets"""
+        return self._handle_request('get', f"{self.endpoint}/presets") or []
+
+    def get_preset(self, preset_id: int) -> Optional[Dict]:
+        """Get preset by ID"""
+        return self._handle_request('get', f"{self.endpoint}/presets/{preset_id}")
+
+    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
+        """Create a new preset"""
+        return self._handle_request('post', f"{self.endpoint}/presets", preset_data)
+
+    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
+        """Update an existing preset"""
+        return self._handle_request('put', f"{self.endpoint}/presets/{preset_id}", preset_data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        """Delete a preset"""
+        result = self._handle_request('delete', f"{self.endpoint}/presets/{preset_id}")
+        return bool(result and result.get('success'))
+
     def get_analytics(self) -> Dict:
         """Get analytics dashboard data"""
         return self._handle_request('get', f"{self.endpoint}/analytics") or {

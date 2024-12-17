@@ -8,7 +8,7 @@ class UserService(BaseService):
 
     def get_all(self) -> List[Dict]:
         """Get all users"""
-        return self._handle_request('get', '/') or []
+        return self._handle_request('get', '') or []
 
     def get_by_id(self, user_id: str) -> Optional[Dict]:
         """Get user by ID"""
@@ -22,7 +22,7 @@ class UserService(BaseService):
             preset_id = None
             
         # Create user
-        user = self._handle_request('post', '/', user_data)
+        user = self._handle_request('post', '', user_data)
         
         if user and preset_id:
             try:
