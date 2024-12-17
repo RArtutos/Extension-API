@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from ..core.auth import verify_password, create_access_token, get_password_hash
+from ..core.auth import verify_password, create_access_token, get_password_hash, decode_access_token
 from ..core.config import settings
 from ..db.database import Database
 
@@ -20,22 +20,24 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(data={"sub": user["email"], "is_admin": user.get("is_admin", False)})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/register")
-async def register(form_data: OAuth2PasswordRequestForm = Depends()):
-    if not db.get_user_by_email(settings.ADMIN_EMAIL):
+@router.get("/validate")
+async def validate_token(token: str = Depends(oauth2_scheme)):
+    """Validate access token and return user info"""
+    payload = decode_access_token(token)
+    if not payload:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin can create new users"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
         )
     
-    if db.get_user_by_email(form_data.username):
+    user = db.get_user_by_email(payload["sub"])
+    if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
         )
-    
-    hashed_password = get_password_hash(form_data.password)
-    user = db.create_user(form_data.username, hashed_password)
-    
-    access_token = create_access_token(data={"sub": user["email"]})
-    return {"access_token": access_token, "token_type": "bearer"}
+        
+    return {
+        "email": user["email"],
+        "is_admin": user.get("is_admin", False)
+    }

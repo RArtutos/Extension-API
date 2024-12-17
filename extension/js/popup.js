@@ -58,8 +58,7 @@ class PopupManager {
         }
 
         try {
-            const data = await apiService.login(email, password);
-            await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
+            await apiService.login(email, password);
             await this.initializeAccountManager();
             ui.showSuccess('Login successful');
         } catch (error) {

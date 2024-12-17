@@ -35,27 +35,54 @@ class ApiService {
     }
 
     async login(email, password) {
-        const response = await fetch(`${this.baseUrl}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-        });
+        try {
+            const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+            });
 
-        if (!response.ok) {
-            throw new Error('Login failed');
+            if (!response.ok) {
+                throw new Error('Login failed');
+            }
+
+            const data = await response.json();
+            if (!data.access_token) {
+                throw new Error('Invalid response from server');
+            }
+
+            // Store the token
+            await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
+            return data;
+        } catch (error) {
+            console.error('Login error:', error);
+            throw error;
         }
-
-        const data = await response.json();
-        if (!data.access_token) {
-            throw new Error('Invalid response from server');
-        }
-
-        return data;
     }
 
-    // ... resto del código ...
+    async getAccounts() {
+        try {
+            const headers = await this.getHeaders();
+            const response = await fetch(`${this.baseUrl}/api/accounts`, {
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Clear invalid token
+                    await storage.remove(STORAGE_KEYS.TOKEN);
+                }
+                throw new Error('Failed to fetch accounts');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching accounts:', error);
+            throw error;
+        }
+    }
 }
 
 export const apiService = new ApiService();
