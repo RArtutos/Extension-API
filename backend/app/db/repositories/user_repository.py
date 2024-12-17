@@ -8,7 +8,25 @@ class UserRepository(BaseRepository):
     def __init__(self):
         super().__init__(settings.DATA_FILE)
 
+    def get_by_email(self, email: str) -> Optional[Dict]:
+        """Get user by email"""
+        data = self._read_data()
+        user = next((user for user in data.get("users", []) if user["email"] == email), None)
+        
+        if user:
+            if user.get("expires_at"):
+                expires_at = datetime.fromisoformat(user["expires_at"])
+                if datetime.utcnow() > expires_at:
+                    return None
+                    
+            user["assigned_accounts"] = [
+                ua["account_id"] for ua in data.get("user_accounts", []) 
+                if ua["user_id"] == email
+            ]
+        return user
+
     def get_all(self) -> List[Dict]:
+        """Get all users"""
         data = self._read_data()
         users = data.get("users", [])
         
@@ -34,6 +52,7 @@ class UserRepository(BaseRepository):
         return users
 
     def create(self, user_data: Dict) -> Optional[Dict]:
+        """Create a new user"""
         data = self._read_data()
         if "users" not in data:
             data["users"] = []
