@@ -3,6 +3,7 @@ from .config import AuthConfig
 from .exceptions import AuthenticationError, InvalidCredentialsError, TokenError, ConnectionError
 from .session_service import SessionService
 from .token_service import TokenService
+from .decorators import admin_required
 
 __all__ = [
     'AuthConfig',
@@ -11,5 +12,6 @@ __all__ = [
     'TokenError',
     'ConnectionError',
     'SessionService',
-    'TokenService'
+    'TokenService',
+    'admin_required'
 ]
