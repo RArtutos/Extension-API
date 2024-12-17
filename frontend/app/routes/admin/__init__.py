@@ -1,7 +1,7 @@
 """Admin routes package initialization"""
 from flask import Blueprint
 from .users import views as user_views
-from .analytics import views as analytics_views
+from .analytics import analytics_views
 from .presets import views as preset_views
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')

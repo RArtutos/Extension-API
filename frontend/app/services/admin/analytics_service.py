@@ -1,4 +1,4 @@
-"""Analytics service"""
+"""Analytics service for admin functionality"""
 from typing import Dict
 from ..base_service import BaseService
 
