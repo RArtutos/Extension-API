@@ -73,6 +73,20 @@ class UserRepository(BaseRepository):
         if "password" in user_data:
             user_data["password"] = get_password_hash(user_data["password"])
 
+        # Get preset accounts if preset_id is provided
+        preset_id = user_data.get("preset_id")
+        if preset_id:
+            preset = next((p for p in data.get("presets", []) if p["id"] == preset_id), None)
+            if preset and preset.get("account_ids"):
+                # Create user_accounts entries for preset accounts
+                if "user_accounts" not in data:
+                    data["user_accounts"] = []
+                for account_id in preset["account_ids"]:
+                    data["user_accounts"].append({
+                        "user_id": user_data["email"],
+                        "account_id": account_id
+                    })
+
         data["users"].append(user_data)
         self._write_data(data)
         return user_data
