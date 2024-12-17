@@ -3,23 +3,21 @@ version: '3.8'
 services:
   frontend:
     build: ./frontend
-    ports:
-      - "31000:31000"  # Cambiado de expose a ports para permitir acceso directo
+    expose:
+      - "31000"  # Puerto interno para Nginx
     volumes:
       - ./frontend:/app
     environment:
-      - API_URL=http://backend:8000
+      - API_URL=http://backend:8000  # Llamada interna directa al backend
       - SECRET_KEY=dev-secret-key
       - ALLOWED_HOSTS=admin.artutos.us.kg
-    networks:
-      - app_network
     depends_on:
       - backend
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"  # Cambiado de expose a ports
+    expose:
+      - "8000"  # Puerto interno para Nginx
     volumes:
       - ./backend:/app
       - ./data:/app/data
@@ -29,8 +27,6 @@ services:
       - ADMIN_PASSWORD=artutos123
       - DATA_FILE=/app/data/db.json
       - CORS_ORIGINS=https://admin.artutos.us.kg
-    networks:
-      - app_network
 
   nginx:
     image: nginx:latest
@@ -39,13 +35,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./certs:/etc/nginx/certs
+      - ./certs:/etc/nginx/certs  # Certificados SSL si tienes alguno
     depends_on:
       - frontend
       - backend
-    networks:
-      - app_network
-
-networks:
-  app_network:
-    driver: bridge
