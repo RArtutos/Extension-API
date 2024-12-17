@@ -2,40 +2,50 @@ import { storage } from './utils/storage.js';
 import { apiService } from './services/api.service.js';
 import { ui } from './utils/ui.js';
 import { accountManager } from './accountManager.js';
+import { STORAGE_KEYS } from './config.js';
 
 class PopupManager {
     constructor() {
         this.initialized = false;
+        this.bindEventHandlers();
+    }
+
+    bindEventHandlers() {
+        this.handleLogin = this.handleLogin.bind(this);
+        this.handleLogout = this.handleLogout.bind(this);
+        this.handleSearch = this.handleSearch.bind(this);
+        this.handleRefresh = this.handleRefresh.bind(this);
+    }
+
+    attachEventListeners() {
+        document.getElementById('login-btn')?.addEventListener('click', this.handleLogin);
+        document.getElementById('logout-btn')?.addEventListener('click', this.handleLogout);
+        document.getElementById('search-accounts')?.addEventListener('input', this.handleSearch);
+        document.getElementById('refresh-btn')?.addEventListener('click', this.handleRefresh);
     }
 
     async init() {
         if (this.initialized) return;
-        
         await this.checkAuthState();
         this.attachEventListeners();
         this.initialized = true;
     }
 
     async checkAuthState() {
-        const token = await storage.get('token');
+        const token = await storage.get(STORAGE_KEYS.TOKEN);
         if (token) {
             try {
-                await this.initializeAccountManager();
-            } catch (error) {
-                if (error.message === 'unauthorized') {
-                    ui.showLoginForm();
+                const userData = await apiService.validateToken(token);
+                if (userData) {
+                    await this.initializeAccountManager();
+                    return;
                 }
+            } catch (error) {
+                console.error('Token validation failed:', error);
+                await storage.remove(STORAGE_KEYS.TOKEN);
             }
-        } else {
-            ui.showLoginForm();
         }
-    }
-
-    attachEventListeners() {
-        document.getElementById('login-btn')?.addEventListener('click', () => this.handleLogin());
-        document.getElementById('logout-btn')?.addEventListener('click', () => this.handleLogout());
-        document.getElementById('search-accounts')?.addEventListener('input', (e) => this.handleSearch(e));
-        document.getElementById('refresh-btn')?.addEventListener('click', () => this.handleRefresh());
+        ui.showLoginForm();
     }
 
     async handleLogin() {
@@ -49,16 +59,17 @@ class PopupManager {
 
         try {
             const data = await apiService.login(email, password);
-            await storage.set('token', data.access_token);
+            await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
             await this.initializeAccountManager();
             ui.showSuccess('Login successful');
         } catch (error) {
+            console.error('Login failed:', error);
             ui.showError('Login failed. Please check your credentials.');
         }
     }
 
     async handleLogout() {
-        await storage.remove(['token', 'currentAccount']);
+        await storage.remove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.CURRENT_ACCOUNT]);
         ui.showLoginForm();
     }
 
@@ -72,23 +83,25 @@ class PopupManager {
 
     async initializeAccountManager() {
         ui.showAccountManager();
-        await this.loadAccounts();
+        await accountManager.init();
     }
 
     async loadAccounts() {
         try {
             const accounts = await apiService.getAccounts();
-            const currentAccount = await storage.get('currentAccount');
+            const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
             ui.updateAccountsList(accounts, currentAccount);
         } catch (error) {
+            console.error('Failed to load accounts:', error);
             if (error.message === 'unauthorized') {
                 await this.handleLogout();
             } else {
-                ui.showError('Failed to load accounts. Please try again.');
+                ui.showError('Failed to load accounts');
             }
         }
     }
 }
 
+// Initialize popup
 const popupManager = new PopupManager();
 document.addEventListener('DOMContentLoaded', () => popupManager.init());

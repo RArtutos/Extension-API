@@ -1,5 +1,6 @@
 import { API_URL } from '../config.js';
 import { storage } from '../utils/storage.js';
+import { STORAGE_KEYS } from '../config.js';
 
 class ApiService {
     constructor() {
@@ -7,23 +8,30 @@ class ApiService {
     }
 
     async getHeaders() {
-        const token = await storage.get('token');
+        const token = await storage.get(STORAGE_KEYS.TOKEN);
         return {
             'Authorization': token ? `Bearer ${token}` : '',
             'Content-Type': 'application/json'
         };
     }
 
-    async handleResponse(response) {
-        if (!response.ok) {
-            if (response.status === 401) {
-                await storage.remove(['token', 'currentAccount']);
-                throw new Error('unauthorized');
+    async validateToken(token) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/auth/validate`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Invalid token');
             }
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || 'Request failed');
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Token validation failed:', error);
+            return null;
         }
-        return response.json();
     }
 
     async login(email, password) {
@@ -32,56 +40,22 @@ class ApiService {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
-        });
-        
-        return this.handleResponse(response);
-    }
-
-    async getAccounts() {
-        const response = await fetch(`${this.baseUrl}/api/accounts`, {
-            headers: await this.getHeaders()
-        });
-        
-        return this.handleResponse(response);
-    }
-
-    async getSessionInfo(accountId) {
-        const response = await fetch(`${this.baseUrl}/api/accounts/${accountId}/session`, {
-            headers: await this.getHeaders()
+            body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
         });
 
-        return this.handleResponse(response);
+        if (!response.ok) {
+            throw new Error('Login failed');
+        }
+
+        const data = await response.json();
+        if (!data.access_token) {
+            throw new Error('Invalid response from server');
+        }
+
+        return data;
     }
 
-    async createSession(accountId, domain) {
-        const response = await fetch(`${this.baseUrl}/api/sessions`, {
-            method: 'POST',
-            headers: await this.getHeaders(),
-            body: JSON.stringify({ account_id: accountId, domain })
-        });
-
-        return this.handleResponse(response);
-    }
-
-    async updateSession(accountId, domain) {
-        const response = await fetch(`${this.baseUrl}/api/sessions/${accountId}`, {
-            method: 'PUT',
-            headers: await this.getHeaders(),
-            body: JSON.stringify({ domain })
-        });
-
-        return this.handleResponse(response);
-    }
-
-    async endSession(accountId) {
-        const response = await fetch(`${this.baseUrl}/api/sessions/${accountId}`, {
-            method: 'DELETE',
-            headers: await this.getHeaders()
-        });
-
-        return this.handleResponse(response);
-    }
+    // ... resto del código ...
 }
 
 export const apiService = new ApiService();
