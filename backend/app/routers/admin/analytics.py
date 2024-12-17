@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from ...core.auth import get_current_admin_user
 from ...core.analytics_manager import AnalyticsManager
 
-router = APIRouter()
+router = APIRouter(prefix="/analytics")
 analytics_manager = AnalyticsManager()
 
 @router.get("/")
