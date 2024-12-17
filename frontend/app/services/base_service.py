@@ -2,21 +2,19 @@
 from typing import Optional, Dict, Any
 import requests
 from flask import current_app
-from ..core.session import SessionManager
-from ..config import Config
+from ..core.auth.config import AuthConfig
+from ..core.auth.session_service import SessionService
+from ..core.auth.token_service import TokenService
 
 class BaseService:
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
-        self.base_url = Config.API_URL
+        self.base_url = AuthConfig.API_URL
 
     def _get_headers(self) -> Dict[str, str]:
         """Get request headers with authentication"""
-        headers = {'Content-Type': 'application/json'}
-        token = SessionManager.get_stored_token()
-        if token:
-            headers['Authorization'] = f'Bearer {token}'
-        return headers
+        token = SessionService.get_stored_token()
+        return TokenService.get_headers(token)
 
     def _handle_request(self, method: str, endpoint: str, data: Dict = None, params: Dict = None) -> Any:
         """Handle API request with error handling"""
@@ -43,5 +41,5 @@ class BaseService:
                 current_app.logger.error(f"API request failed: {str(e)}")
             if e.response and e.response.status_code == 401:
                 # Clear session on unauthorized
-                SessionManager.clear_session()
+                SessionService.clear_session()
             raise
