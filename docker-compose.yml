@@ -10,8 +10,13 @@ services:
     environment:
       - API_URL=http://backend:8000
       - SECRET_KEY=dev-secret-key
+      - ALLOWED_HOSTS=admin.artutos.us.kg
     depends_on:
       - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`admin.artutos.us.kg`)"
+      - "traefik.http.services.admin.loadbalancer.server.port=31000"
 
   backend:
     build: ./backend
@@ -25,6 +30,22 @@ services:
       - ADMIN_EMAIL=admin@artutos.eu.org
       - ADMIN_PASSWORD=artutos123
       - DATA_FILE=/app/data/db.json
+      - CORS_ORIGINS=https://admin.artutos.us.kg
+
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./acme.json:/acme.json"
 
 volumes:
   data:
