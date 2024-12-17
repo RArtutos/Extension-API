@@ -27,17 +27,17 @@ class AccountManager {
                 const domain = new URL(tab.url).hostname;
                 const currentAccount = await storage.get('currentAccount');
                 if (currentAccount) {
-                    sessionService.resetTimer(domain, currentAccount.id);
+                    await sessionService.resetTimer(domain, currentAccount.id);
                 }
             }
         });
 
-        chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             if (changeInfo.url) {
                 const domain = new URL(changeInfo.url).hostname;
-                const currentAccount = storage.get('currentAccount');
+                const currentAccount = await storage.get('currentAccount');
                 if (currentAccount) {
-                    sessionService.resetTimer(domain, currentAccount.id);
+                    await sessionService.resetTimer(domain, currentAccount.id);
                 }
             }
         });
@@ -61,7 +61,7 @@ class AccountManager {
             // Check session limits
             const sessionInfo = await accountService.getSessionInfo(account.id);
             if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-                throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
+                throw new Error(`This account has reached its maximum number of concurrent users (${sessionInfo.max_concurrent_users}). Please try another account.`);
             }
 
             // Remove current account cookies and session
@@ -76,11 +76,15 @@ class AccountManager {
             // Set new account cookies and create session
             const firstDomain = accountService.getFirstDomain(account);
             if (firstDomain) {
-                await sessionService.createSession(account.id, firstDomain);
+                const sessionCreated = await sessionService.createSession(account.id, firstDomain);
+                if (!sessionCreated) {
+                    throw new Error('Failed to create session. Please try again.');
+                }
+
                 for (const cookie of account.cookies) {
                     await accountService.setCookies(cookie);
                 }
-                sessionService.startInactivityTimer(firstDomain, account.id);
+                await sessionService.startInactivityTimer(firstDomain, account.id);
             }
 
             // Update storage and UI
@@ -96,19 +100,8 @@ class AccountManager {
             ui.showSuccess('Account switched successfully');
         } catch (error) {
             console.error('Error switching account:', error);
-            ui.showError('Error switching account: ' + error.message);
+            ui.showError(error.message);
         }
-    }
-
-    setProxyEnabled(enabled) {
-        this.proxyEnabled = enabled;
-        if (accountService.getCurrentAccount()) {
-            this.updateProxy();
-        }
-    }
-
-    async updateProxy() {
-        console.log('Updating proxy configuration...');
     }
 }
 

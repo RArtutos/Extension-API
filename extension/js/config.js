@@ -1,5 +1,5 @@
 // API configuration
-export const API_URL = 'http://84.46.249.121:8000';
+export const API_URL = 'https://api.artutos.us.kg';
 
 // Cookie configuration
 export const COOKIE_DEFAULTS = {

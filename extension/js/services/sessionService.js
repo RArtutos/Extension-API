@@ -1,6 +1,6 @@
 import { api } from '../utils/api.js';
 import { storage } from '../utils/storage.js';
-import { STORAGE_KEYS } from '../config.js';
+import { cookieService } from './cookieService.js';
 
 class SessionService {
     constructor() {
@@ -8,9 +8,6 @@ class SessionService {
     }
 
     async createSession(accountId, domain) {
-        const token = await storage.get(STORAGE_KEYS.TOKEN);
-        if (!token) return false;
-
         try {
             const response = await api.createSession(accountId, domain);
             return response.success;
@@ -21,14 +18,21 @@ class SessionService {
     }
 
     async updateSession(accountId, domain) {
-        const token = await storage.get(STORAGE_KEYS.TOKEN);
-        if (!token) return false;
-
         try {
             const response = await api.updateSession(accountId, domain);
             return response.success;
         } catch (error) {
             console.error('Error updating session:', error);
+            return false;
+        }
+    }
+
+    async removeSession(accountId) {
+        try {
+            const response = await api.removeSession(accountId);
+            return response.success;
+        } catch (error) {
+            console.error('Error removing session:', error);
             return false;
         }
     }
@@ -40,35 +44,27 @@ class SessionService {
 
         const timer = setTimeout(async () => {
             await this.handleInactivity(domain, accountId);
-        }, 60000); // 1 minute
+        }, 60000); // 1 minute inactivity timeout
 
         this.activeTimers.set(domain, timer);
     }
 
     async handleInactivity(domain, accountId) {
-        const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
+        const currentAccount = await storage.get('currentAccount');
         if (!currentAccount || currentAccount.id !== accountId) return;
 
-        // Remove cookies for the inactive domain
-        const cookies = await chrome.cookies.getAll({ domain });
-        for (const cookie of cookies) {
-            try {
-                await chrome.cookies.remove({
-                    url: `https://${domain}`,
-                    name: cookie.name
-                });
-            } catch (error) {
-                console.error(`Error removing cookie ${cookie.name}:`, error);
-            }
-        }
+        console.log(`Handling inactivity for domain: ${domain}`);
 
+        // Remove cookies only for the inactive domain
+        await cookieService.removeAllCookies(domain);
+        
         this.activeTimers.delete(domain);
-        await api.removeSession(accountId, domain);
+        await this.updateSession(accountId, domain);
     }
 
-    resetTimer(domain, accountId) {
+    async resetTimer(domain, accountId) {
         this.startInactivityTimer(domain, accountId);
-        this.updateSession(accountId, domain);
+        await this.updateSession(accountId, domain);
     }
 }
 
