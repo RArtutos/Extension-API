@@ -8,7 +8,7 @@ class UserService(BaseService):
 
     def get_all(self) -> List[Dict]:
         """Get all users"""
-        return self._handle_request('get', '') or []
+        return self._handle_request('get', '/') or []
 
     def get_by_id(self, user_id: str) -> Optional[Dict]:
         """Get user by ID"""
@@ -16,22 +16,12 @@ class UserService(BaseService):
 
     def create(self, user_data: Dict) -> Optional[Dict]:
         """Create a new user"""
-        # Extract preset_id before creating user
-        preset_id = user_data.pop('preset_id', None)
-        if preset_id == 0:  # Handle case where '0' is selected as 'None'
-            preset_id = None
+        # Handle preset_id
+        if user_data.get('preset_id') == 0:
+            user_data['preset_id'] = None
             
-        # Create user
-        user = self._handle_request('post', '', user_data)
-        
-        if user and preset_id:
-            try:
-                # Assign preset accounts if specified
-                self.assign_preset(user['email'], preset_id)
-            except Exception as e:
-                print(f"Error assigning preset: {str(e)}")
-                
-        return user
+        # Create user with preset information
+        return self._handle_request('post', '/', user_data)
 
     def get_accounts(self, user_id: str) -> List[Dict]:
         """Get accounts assigned to a user"""
@@ -57,13 +47,4 @@ class UserService(BaseService):
             return bool(result and result.get('success'))
         except Exception as e:
             print(f"Error removing account: {str(e)}")
-            return False
-
-    def assign_preset(self, user_id: str, preset_id: int) -> bool:
-        """Assign preset accounts to user"""
-        try:
-            result = self._handle_request('post', f"/{user_id}/presets/{preset_id}")
-            return bool(result and result.get('success'))
-        except Exception as e:
-            print(f"Error assigning preset: {str(e)}")
             return False

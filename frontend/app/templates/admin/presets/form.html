@@ -52,7 +52,7 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> {{ 'Update' if is_edit else 'Create' }} Preset
                         </button>
-                        <a href="{{ url_for('admin.list_presets') }}" class="btn btn-secondary">
+                        <a href="{{ url_for('admin.presets.list_presets') }}" class="btn btn-secondary">
                             <i class="bi bi-x-circle"></i> Cancel
                         </a>
                     </div>
