@@ -24,14 +24,16 @@ class PresetRepository(BaseRepository):
             
         return processed
 
-    def get_presets(self) -> List[Dict]:
+    def get_all(self) -> List[Dict]:
+        """Get all presets"""
         data = self._read_data()
         users = data.get("users", [])
         presets = data.get("presets", [])
         
         return [self._process_preset(preset, users) for preset in presets]
 
-    def get_preset(self, preset_id: int) -> Optional[Dict]:
+    def get_by_id(self, preset_id: int) -> Optional[Dict]:
+        """Get preset by ID"""
         data = self._read_data()
         preset = next(
             (p for p in data.get("presets", []) if p["id"] == preset_id),
@@ -43,6 +45,7 @@ class PresetRepository(BaseRepository):
         return None
 
     def create_preset(self, preset_data: dict) -> Optional[dict]:
+        """Create a new preset"""
         data = self._read_data()
         if "presets" not in data:
             data["presets"] = []
@@ -50,9 +53,8 @@ class PresetRepository(BaseRepository):
         preset_id = max([p.get("id", 0) for p in data["presets"]], default=0) + 1
         preset = {
             "id": preset_id,
-            "created_at": datetime.utcnow(),
-            **preset_data,
-            "user_count": 0
+            "created_at": datetime.utcnow().isoformat(),
+            **preset_data
         }
         
         data["presets"].append(preset)
@@ -60,6 +62,7 @@ class PresetRepository(BaseRepository):
         return self._process_preset(preset, data.get("users", []))
 
     def update_preset(self, preset_id: int, preset_data: dict) -> Optional[dict]:
+        """Update an existing preset"""
         data = self._read_data()
         preset_index = next(
             (i for i, p in enumerate(data.get("presets", []))
@@ -75,6 +78,7 @@ class PresetRepository(BaseRepository):
         return None
 
     def delete_preset(self, preset_id: int) -> bool:
+        """Delete a preset"""
         data = self._read_data()
         initial_count = len(data.get("presets", []))
         
@@ -94,6 +98,7 @@ class PresetRepository(BaseRepository):
         return False
 
     def get_users_by_preset(self, preset_id: int) -> List[dict]:
+        """Get users assigned to a preset"""
         data = self._read_data()
         return [
             user for user in data.get("users", [])

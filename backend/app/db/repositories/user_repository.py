@@ -73,6 +73,11 @@ class UserRepository(BaseRepository):
         if "password" in user_data:
             user_data["password"] = get_password_hash(user_data["password"])
 
+        # Store preset_id if provided
+        preset_id = user_data.get("preset_id")
+        if preset_id:
+            user_data["preset_id"] = preset_id
+
         data["users"].append(user_data)
         self._write_data(data)
         return user_data
