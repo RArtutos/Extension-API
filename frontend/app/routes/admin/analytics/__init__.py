@@ -1,4 +1,6 @@
 """Analytics routes package initialization"""
-from .views import analytics_views
+from flask import Blueprint
 
-__all__ = ['analytics_views']
+bp = Blueprint('analytics', __name__, url_prefix='/analytics')
+
+from . import views  # Import views after blueprint creation to avoid circular imports

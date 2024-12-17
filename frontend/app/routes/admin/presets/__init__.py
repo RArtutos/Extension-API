@@ -1,6 +1,6 @@
-"""Users routes package initialization"""
+"""Presets routes package initialization"""
 from flask import Blueprint
 
-bp = Blueprint('users', __name__, url_prefix='/users')
+bp = Blueprint('presets', __name__, url_prefix='/presets')
 
 from . import views  # Import views after blueprint creation to avoid circular imports
