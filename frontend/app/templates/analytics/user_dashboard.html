@@ -10,7 +10,7 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Active Sessions</h5>
-                    <h2 class="card-text">{{ analytics.current_sessions }}/{{ user.max_devices }}</h2>
+                    <h2 class="card-text">{{ analytics.current_sessions }}/{{ user.max_devices if user else 1 }}</h2>
                 </div>
             </div>
         </div>
@@ -54,7 +54,7 @@
                                 <tr>
                                     <td>{{ account.name }}</td>
                                     <td>{{ (account.total_time / 3600)|round(1) }} hours</td>
-                                    <td>{{ account.last_access|datetime }}</td>
+                                    <td>{% if account.last_access %}{{ account.last_access[:19].replace('T', ' ') }}{% else %}Never{% endif %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -85,7 +85,7 @@
                                 <tr>
                                     <td>{{ activity.account_name }}</td>
                                     <td>{{ activity.action }}</td>
-                                    <td>{{ activity.timestamp|datetime }}</td>
+                                    <td>{% if activity.timestamp %}{{ activity.timestamp[:19].replace('T', ' ') }}{% else %}Never{% endif %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

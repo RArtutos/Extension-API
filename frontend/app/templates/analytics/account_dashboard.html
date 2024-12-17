@@ -76,7 +76,7 @@
                                     <td>{{ activity.user_id }}</td>
                                     <td>{{ activity.action }}</td>
                                     <td>{{ activity.domain }}</td>
-                                    <td>{{ activity.timestamp|datetime }}</td>
+                                    <td>{% if activity.timestamp %}{{ activity.timestamp[:19].replace('T', ' ') }}{% else %}Never{% endif %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
