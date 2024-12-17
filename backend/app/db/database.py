@@ -54,6 +54,9 @@ class Database:
     def get_account_users(self, account_id: int) -> List[Dict]:
         return self.analytics.get_account_users(account_id)
 
+    def get_user_account_usage(self, user_id: str) -> List[Dict]:
+        return self.analytics.get_user_account_usage(user_id)
+
     def get_user_analytics(self, user_id: str) -> Dict:
         return {
             "user_id": user_id,
