@@ -16,7 +16,7 @@ export class CookieSetter {
     }
   }
 
-  private async setWithDefaultOptions(url: string, domain: string, name: string, value: string) {
+  async setWithDefaultOptions(url, domain, name, value) {
     await chrome.cookies.set({
       url,
       name,
@@ -28,7 +28,7 @@ export class CookieSetter {
     });
   }
 
-  private async setWithFallbackOptions(url: string, domain: string, name: string, value: string) {
+  async setWithFallbackOptions(url, domain, name, value) {
     await chrome.cookies.set({
       url,
       name,
