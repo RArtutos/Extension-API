@@ -4,6 +4,7 @@ from .repositories.user_repository import UserRepository
 from .repositories.account_repository import AccountRepository
 from .repositories.user_account_repository import UserAccountRepository
 from .repositories.preset_repository import PresetRepository
+from .repositories.analytics_repository import AnalyticsRepository
 from ..core.config import settings
 
 class Database:
@@ -12,6 +13,7 @@ class Database:
         self.accounts = AccountRepository()
         self.user_accounts = UserAccountRepository()
         self.presets = PresetRepository()
+        self.analytics = AnalyticsRepository()
 
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         return self.users.get_by_email(email)
@@ -19,52 +21,20 @@ class Database:
     def get_users(self):
         return self.users.get_all()
 
-    def create_user(self, email: str, password: str, is_admin: bool = False, 
-                   expires_in_days: Optional[int] = None, preset_id: Optional[int] = None):
-        user = self.users.create(email, password, is_admin, expires_in_days, preset_id)
-        if user.get("preset_id"):
-            preset = self.get_preset(user["preset_id"])
-            if preset:
-                for account_id in preset["account_ids"]:
-                    self.user_accounts.assign_account(user["email"], account_id)
-        return user
-
     def get_accounts(self, user_id: Optional[str] = None):
         return self.accounts.get_all(user_id)
 
     def get_account(self, account_id: int):
         return self.accounts.get_by_id(account_id)
 
-    def create_account(self, account_data: Dict):
-        return self.accounts.create(account_data)
+    def get_recent_activities(self, limit: int = 10) -> List[Dict]:
+        return self.analytics.get_recent_activities(limit)
 
-    def update_account(self, account_id: int, account_data: Dict):
-        return self.accounts.update(account_id, account_data)
+    def get_account_sessions(self, account_id: int) -> List[Dict]:
+        return self.analytics.get_account_sessions(account_id)
 
-    def delete_account(self, account_id: int):
-        return self.accounts.delete(account_id)
+    def get_user_sessions(self, user_id: str) -> List[Dict]:
+        return self.analytics.get_user_sessions(user_id)
 
-    def assign_account_to_user(self, user_id: str, account_id: int):
-        return self.user_accounts.assign_account(user_id, account_id)
-
-    def remove_all_user_accounts(self, user_id: str):
-        return self.user_accounts.remove_all_user_accounts(user_id)
-
-    # Preset methods
-    def get_presets(self) -> List[Dict]:
-        return self.presets.get_presets()
-
-    def get_preset(self, preset_id: int) -> Optional[Dict]:
-        return self.presets.get_preset(preset_id)
-
-    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
-        return self.presets.create_preset(preset_data)
-
-    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
-        return self.presets.update_preset(preset_id, preset_data)
-
-    def delete_preset(self, preset_id: int) -> bool:
-        return self.presets.delete_preset(preset_id)
-
-    def get_users_by_preset(self, preset_id: int) -> List[Dict]:
-        return self.presets.get_users_by_preset(preset_id)
+    def get_account_users(self, account_id: int) -> List[Dict]:
+        return self.analytics.get_account_users(account_id)
