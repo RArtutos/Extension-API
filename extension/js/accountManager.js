@@ -1,6 +1,6 @@
 import { accountService } from './services/accountService.js';
 import { sessionService } from './services/sessionService.js';
-import { cookieManager } from './utils/cookie/cookieManager.js';
+import { cookieManager } from './utils/cookieManager.js';
 import { ui } from './utils/ui.js';
 
 class AccountManager {
@@ -31,6 +31,7 @@ class AccountManager {
 
     try {
       await sessionService.updateSession(this.currentAccount.id, domain);
+      sessionService.startInactivityTimer(domain, this.currentAccount.id);
     } catch (error) {
       console.error('Error handling tab activity:', error);
       ui.showError('Error updating session activity');
@@ -58,6 +59,7 @@ class AccountManager {
       const domain = this.getFirstDomain(account);
       if (domain) {
         await sessionService.startSession(account.id, domain);
+        sessionService.startInactivityTimer(domain, account.id);
         
         // Open the domain in a new tab
         chrome.tabs.create({ url: `https://${domain}` });
@@ -85,4 +87,8 @@ class AccountManager {
   }
 }
 
+// Create and export a singleton instance
 export const accountManager = new AccountManager();
+
+// Make it available globally
+window.accountManager = accountManager;

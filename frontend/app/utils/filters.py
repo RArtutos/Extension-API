@@ -2,18 +2,18 @@
 from datetime import datetime
 from typing import Optional
 
-def format_datetime(value: Optional[datetime | str]) -> str:
+def format_datetime(dt: Optional[datetime | str]) -> str:
     """Format datetime for display"""
-    if not value:
+    if not dt:
         return "Never"
     
-    if isinstance(value, str):
+    if isinstance(dt, str):
         try:
-            value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(dt)
         except (ValueError, TypeError):
-            return value
+            return dt
             
-    return value.strftime("%Y-%m-%d %H:%M:%S")
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 def register_filters(app):
     """Register all template filters"""

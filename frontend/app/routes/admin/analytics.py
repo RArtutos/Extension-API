@@ -1,7 +1,7 @@
 """Admin analytics routes"""
 from flask import render_template
 from flask_login import current_user
-from ...services.admin.admin_service import AdminService
+from ...services.admin import AdminService
 
 admin_service = AdminService()
 

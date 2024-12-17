@@ -5,8 +5,7 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
-    API_URL = os.getenv('API_URL', 'http://backend:8000')  # This is for internal Docker communication
-    EXTERNAL_API_URL = os.getenv('EXTERNAL_API_URL', 'https://api.artutos.us.kg')  # This is for browser requests
+    API_URL = os.getenv('API_URL', 'http://backend:8000')
     ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@artutos.eu.org')
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'admin.artutos.us.kg').split(',')
     

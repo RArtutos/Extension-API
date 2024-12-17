@@ -16,8 +16,10 @@ class HttpClient {
       const response = await fetch(`${API_URL}${endpoint}`, { headers });
       
       if (!response.ok) {
-        const error = await this.handleErrorResponse(response);
-        throw error;
+        if (response.status === 401) {
+          await authService.logout();
+        }
+        throw new Error('Request failed');
       }
 
       return await response.json();
@@ -37,8 +39,7 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        const error = await this.handleErrorResponse(response);
-        throw error;
+        throw new Error('Request failed');
       }
 
       return await response.json();
@@ -58,8 +59,7 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        const error = await this.handleErrorResponse(response);
-        throw error;
+        throw new Error('Request failed');
       }
 
       return await response.json();
@@ -78,28 +78,13 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        const error = await this.handleErrorResponse(response);
-        throw error;
+        throw new Error('Request failed');
       }
 
       return true;
     } catch (error) {
       console.error('DELETE request failed:', error);
       throw error;
-    }
-  }
-
-  async handleErrorResponse(response) {
-    if (response.status === 401) {
-      await authService.logout();
-      return new Error('Authentication failed. Please login again.');
-    }
-
-    try {
-      const errorData = await response.json();
-      return new Error(errorData.detail || errorData.message || 'Request failed');
-    } catch {
-      return new Error(`Request failed with status ${response.status}`);
     }
   }
 }

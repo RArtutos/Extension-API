@@ -2,35 +2,27 @@
 from typing import Optional, Dict, Any
 import requests
 from flask import current_app
-from ..core.auth.config import AuthConfig
-from ..core.auth.session_service import SessionService
-from ..core.auth.token_service import TokenService
+from ..core.session import SessionManager
+from ..config import Config
 
 class BaseService:
     def __init__(self, endpoint: str):
         self.endpoint = endpoint
-        self.base_url = AuthConfig.API_URL
+        self.base_url = Config.API_URL
 
     def _get_headers(self) -> Dict[str, str]:
         """Get request headers with authentication"""
-        token = SessionService.get_stored_token()
-        return TokenService.get_headers(token)
+        headers = {'Content-Type': 'application/json'}
+        token = SessionManager.get_stored_token()
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+        return headers
 
     def _handle_request(self, method: str, endpoint: str, data: Dict = None, params: Dict = None) -> Any:
         """Handle API request with error handling"""
         try:
-            # Ensure endpoint starts with /api
-            if not endpoint.startswith('/api'):
-                endpoint = f'/api{endpoint}'
-
             url = f"{self.base_url}{endpoint}"
             headers = self._get_headers()
-            
-            if current_app:
-                current_app.logger.debug(f"Making {method.upper()} request to: {url}")
-                current_app.logger.debug(f"Headers: {headers}")
-                if data:
-                    current_app.logger.debug(f"Data: {data}")
             
             if method == 'get':
                 response = requests.get(url, headers=headers, params=params)
@@ -49,9 +41,7 @@ class BaseService:
         except requests.exceptions.RequestException as e:
             if current_app:
                 current_app.logger.error(f"API request failed: {str(e)}")
-                if hasattr(e.response, 'text'):
-                    current_app.logger.error(f"Response text: {e.response.text}")
             if e.response and e.response.status_code == 401:
                 # Clear session on unauthorized
-                SessionService.clear_session()
+                SessionManager.clear_session()
             raise
