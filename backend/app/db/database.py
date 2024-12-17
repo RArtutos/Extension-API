@@ -77,3 +77,33 @@ class Database:
 
     def end_session(self, session_id: str) -> bool:
         return self.sessions.end_session(session_id)
+
+    # User methods
+    def get_user_by_email(self, email: str) -> Optional[Dict]:
+        return self.users.get_by_email(email)
+
+    def get_users(self) -> List[Dict]:
+        return self.users.get_all()
+
+    def create_user(self, user_data: Dict) -> Optional[Dict]:
+        return self.users.create(user_data)
+
+    def delete_user(self, user_id: str) -> bool:
+        """Delete a user and all their associations"""
+        # First remove all account associations
+        self.user_accounts.remove_all_user_accounts(user_id)
+        # Then delete the user
+        return self.users.delete(user_id)
+
+    # Account methods
+    def get_accounts(self, user_id: Optional[str] = None) -> List[Dict]:
+        return self.accounts.get_all(user_id)
+
+    def get_account(self, account_id: int) -> Optional[Dict]:
+        return self.accounts.get_by_id(account_id)
+
+    def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
+        return self.user_accounts.assign_account(user_id, account_id)
+
+    def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
+        return self.user_accounts.remove_account(user_id, account_id)
