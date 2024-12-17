@@ -27,6 +27,21 @@ class Database:
     def get_account(self, account_id: int):
         return self.accounts.get_by_id(account_id)
 
+    def get_presets(self) -> List[Dict]:
+        return self.presets.get_presets()
+
+    def get_preset(self, preset_id: int) -> Optional[Dict]:
+        return self.presets.get_preset(preset_id)
+
+    def create_preset(self, preset_data: Dict) -> Optional[Dict]:
+        return self.presets.create_preset(preset_data)
+
+    def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
+        return self.presets.update_preset(preset_id, preset_data)
+
+    def delete_preset(self, preset_id: int) -> bool:
+        return self.presets.delete_preset(preset_id)
+
     def get_recent_activities(self, limit: int = 10) -> List[Dict]:
         return self.analytics.get_recent_activities(limit)
 
@@ -38,3 +53,12 @@ class Database:
 
     def get_account_users(self, account_id: int) -> List[Dict]:
         return self.analytics.get_account_users(account_id)
+
+    def get_user_analytics(self, user_id: str) -> Dict:
+        return {
+            "user_id": user_id,
+            "sessions": self.analytics.get_user_sessions(user_id),
+            "account_usage": self.analytics.get_user_account_usage(user_id),
+            "total_time": self.analytics.get_user_total_time(user_id),
+            "current_sessions": len([s for s in self.analytics.get_user_sessions(user_id) if s.get("active")])
+        }
