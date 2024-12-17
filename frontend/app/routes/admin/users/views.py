@@ -1,5 +1,5 @@
 """Admin users views"""
-from flask import render_template, redirect, url_for, flash, jsonify
+from flask import render_template, redirect, url_for, flash, jsonify, request
 from ....services.admin import UserService
 from ....forms.user import UserForm
 from ....core.auth import admin_required
@@ -21,7 +21,16 @@ def create_user():
     form = UserForm()
     if form.validate_on_submit():
         try:
-            user = user_service.create(form.data)
+            user_data = {
+                'email': form.email.data,
+                'password': form.password.data,
+                'is_admin': form.is_admin.data,
+                'max_devices': form.max_devices.data,
+                'expires_in_days': form.expires_in_days.data,
+                'preset_id': form.preset_id.data if form.preset_id.data != 0 else None
+            }
+            
+            user = user_service.create(user_data)
             if user:
                 flash('User created successfully', 'success')
                 return redirect(url_for('admin.users.list_users'))
