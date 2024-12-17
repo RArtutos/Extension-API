@@ -30,37 +30,37 @@
                     <tbody>
                         {% for user in users %}
                         <tr>
-                            <td>{{ user.email }}</td>
+                            <td>{{ user.get('email', 'N/A') }}</td>
                             <td>
-                                <span class="badge {% if user.is_admin %}bg-danger{% else %}bg-primary{% endif %}">
-                                    {{ 'Admin' if user.is_admin else 'User' }}
+                                <span class="badge {% if user.get('is_admin', False) %}bg-danger{% else %}bg-primary{% endif %}">
+                                    {{ 'Admin' if user.get('is_admin', False) else 'User' }}
                                 </span>
                             </td>
                             <td>
-                                {% if user.expires_at %}
-                                    {{ user.expires_at }}
+                                {% if user.get('expires_at') %}
+                                    {{ user.expires_at|datetime }}
                                 {% else %}
                                     Never
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                    {{ 'Active' if user.is_active else 'Inactive' }}
+                                <span class="badge {% if user.get('is_active', False) %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ 'Active' if user.get('is_active', False) else 'Inactive' }}
                                 </span>
                             </td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{{ url_for('admin.analytics.user_analytics', user_id=user.email) }}" 
+                                    <a href="{{ url_for('admin.analytics.user_analytics', user_id=user.get('email', '')) }}" 
                                        class="btn btn-sm btn-primary">
                                         <i class="bi bi-graph-up"></i> Analytics
                                     </a>
-                                    <a href="{{ url_for('admin.users.user_accounts', user_id=user.email) }}" 
+                                    <a href="{{ url_for('admin.users.user_accounts', user_id=user.get('email', '')) }}" 
                                        class="btn btn-sm btn-info">
                                         <i class="bi bi-gear"></i> Manage
                                     </a>
                                     <button class="btn btn-sm btn-danger" 
-                                            onclick="deleteUser('{{ user.email }}')"
-                                            {% if user.is_admin %}disabled{% endif %}>
+                                            onclick="deleteUser('{{ user.get('email', '') }}')"
+                                            {% if user.get('is_admin', False) %}disabled{% endif %}>
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>

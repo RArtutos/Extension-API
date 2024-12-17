@@ -21,7 +21,7 @@ class UserService(BaseService):
             user_data['preset_id'] = None
             
         # Create user with preset information
-        return self._handle_request('post', '/', user_data)
+        return self._handle_request('post', '/create', user_data)
 
     def get_accounts(self, user_id: str) -> List[Dict]:
         """Get accounts assigned to a user"""
