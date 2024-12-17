@@ -1,3 +1,4 @@
+"""Admin service module"""
 from typing import List, Dict, Optional
 from .base_service import BaseService
 
@@ -47,9 +48,24 @@ class AdminService(BaseService):
     def get_user_analytics(self, user_id: str) -> Dict:
         """Get analytics for a specific user"""
         result = self._handle_request('get', f"{self.endpoint}/analytics/user/{user_id}")
-        return result if result else {}
+        return result if result else {
+            'user_id': user_id,
+            'total_time': 0,
+            'total_sessions': 0,
+            'current_sessions': 0,
+            'last_activity': None,
+            'account_usage': []
+        }
 
     def get_account_analytics(self, account_id: int) -> Dict:
         """Get analytics for a specific account"""
         result = self._handle_request('get', f"{self.endpoint}/analytics/account/{account_id}")
-        return result if result else {}
+        return result if result else {
+            'account_id': account_id,
+            'total_users': 0,
+            'active_users': 0,
+            'total_sessions': 0,
+            'current_sessions': 0,
+            'usage_by_domain': [],
+            'user_activities': []
+        }

@@ -1,7 +1,7 @@
-"""Base service class for API interactions"""
+"""Base service for API interactions"""
 from typing import Optional, Dict, Any
 import requests
-from flask import current_app, session
+from flask import current_app
 from ..core.session import SessionManager
 from ..config import Config
 

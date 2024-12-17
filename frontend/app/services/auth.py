@@ -1,3 +1,4 @@
+"""Authentication service module"""
 import requests
 from typing import Optional, Tuple
 from ..models.user import User
@@ -9,6 +10,7 @@ class AuthService:
         self.api_url = f"{Config.API_URL}/api/auth"
     
     def login(self, email: str, password: str) -> Tuple[Optional[User], Optional[str]]:
+        """Authenticate user and create session"""
         try:
             response = requests.post(
                 f"{self.api_url}/login",
@@ -48,6 +50,7 @@ class AuthService:
             return None, f"Login error: {str(e)}"
 
     def get_user(self, email: str) -> Optional[User]:
+        """Get user by email"""
         if not email:
             return None
         return User(
