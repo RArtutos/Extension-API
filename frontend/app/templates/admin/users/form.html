@@ -33,6 +33,18 @@
                         {% endif %}
                     </div>
                     <div class="mb-3">
+                        {{ form.max_devices.label(class="form-label") }}
+                        {{ form.max_devices(class="form-control", type="number", min="1") }}
+                        {% if form.max_devices.errors %}
+                            <div class="text-danger">
+                                {% for error in form.max_devices.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">Maximum number of concurrent devices allowed for this user</small>
+                    </div>
+                    <div class="mb-3">
                         {{ form.expires_in_days.label(class="form-label") }}
                         {{ form.expires_in_days(class="form-control", type="number", min="1") }}
                         {% if form.expires_in_days.errors %}

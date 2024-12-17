@@ -6,6 +6,9 @@ class UserForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     is_admin = BooleanField('Is Admin')
+    max_devices = IntegerField('Max Devices', 
+                             validators=[DataRequired(), NumberRange(min=1)],
+                             default=1)
     expires_in_days = IntegerField('Expires In (Days)', 
                                  validators=[Optional(), NumberRange(min=1)],
                                  default=30)
