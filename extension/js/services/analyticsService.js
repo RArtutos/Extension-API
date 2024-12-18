@@ -1,3 +1,7 @@
+import { ANALYTICS_CONFIG } from '../config/constants.js';
+import { storage } from '../utils/storage.js';
+import { httpClient } from '../utils/httpClient.js';
+
 // Analytics service implementation
 class AnalyticsService {
   constructor() {

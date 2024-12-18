@@ -1,9 +1,9 @@
 import { accountService } from './services/accountService.js';
-import { sessionService } from './services/sessionService.js';
-import { cookieManager } from './utils/cookieManager.js';
+import { sessionManager } from './services/sessionManager.js';
+import { cookieManager } from './utils/cookie/cookieManager.js';
 import { analyticsService } from './services/analyticsService.js';
 import { ui } from './utils/ui.js';
-import { storage } from './utils/storage.js'; // Añadido import de storage
+import { storage } from './utils/storage.js';
 
 class AccountManager {
   constructor() {
@@ -24,58 +24,40 @@ class AccountManager {
     // Monitor URL changes
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (changeInfo.url) {
-        const oldDomain = this.currentAccount?.cookies[0]?.domain;
-        const newDomain = new URL(changeInfo.url).hostname;
-        
-        // If user navigates away from the account domain
-        if (oldDomain && !newDomain.includes(oldDomain.replace(/^\./, ''))) {
-          await this.handleDomainExit(oldDomain);
-        }
-        
-        await this.handleTabActivity(newDomain);
+        const domain = new URL(changeInfo.url).hostname;
+        await this.handleTabActivity(domain);
       }
+    });
+
+    // Monitor browser close
+    chrome.runtime.onSuspend.addListener(async () => {
+      await sessionManager.cleanupCurrentSession();
     });
   }
 
   async handleTabActivity(domain) {
-    if (!this.currentAccount) return;
+    const currentAccount = await storage.get('currentAccount');
+    if (!currentAccount) return;
 
     try {
-      await sessionService.updateSession(this.currentAccount.id, domain);
+      await sessionManager.updateSessionStatus(currentAccount.id);
       await analyticsService.trackPageView(domain);
     } catch (error) {
       console.error('Error handling tab activity:', error);
-      ui.showError('Error updating session activity');
-    }
-  }
-
-  async handleDomainExit(domain) {
-    if (!this.currentAccount) return;
-
-    try {
-      await cookieManager.removeAccountCookies(this.currentAccount);
-      await sessionService.endSession(this.currentAccount.id, domain);
-      this.currentAccount = null;
-      await storage.remove('currentAccount');
-    } catch (error) {
-      console.error('Error handling domain exit:', error);
+      if (error.message.includes('Session limit reached')) {
+        await sessionManager.cleanupCurrentSession();
+        ui.showError('Session expired: maximum concurrent users reached');
+      }
     }
   }
 
   async switchAccount(account) {
     try {
-      // Check session limits
-      const sessionInfo = await sessionService.getSessionInfo(account.id);
-      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-        throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached for this account`);
-      }
-
       // End current session if exists
-      if (this.currentAccount) {
-        const currentDomain = this.currentAccount.cookies[0]?.domain;
-        await sessionService.endSession(this.currentAccount.id, currentDomain);
-        await cookieManager.removeAccountCookies(this.currentAccount);
-      }
+      await sessionManager.cleanupCurrentSession();
+
+      // Check session limits
+      await sessionManager.updateSessionStatus(account.id);
 
       // Set new cookies
       await cookieManager.setAccountCookies(account);
@@ -83,19 +65,17 @@ class AccountManager {
       // Start new session
       const domain = this.getFirstDomain(account);
       if (domain) {
-        await sessionService.startSession(account.id, domain);
-        
-        // Track account switch
+        await sessionManager.startSession(account.id, domain);
         await analyticsService.trackAccountSwitch(this.currentAccount, account);
         
-        // Open the domain in a new tab
+        // Store current account
+        await storage.set('currentAccount', account);
+        this.currentAccount = account;
+
+        // Open domain in new tab
         chrome.tabs.create({ url: `https://${domain}` });
       }
 
-      // Update state
-      this.currentAccount = account;
-      await storage.set('currentAccount', account);
-      
       ui.showSuccess('Account switched successfully');
 
       // Refresh accounts list
