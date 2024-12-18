@@ -19,7 +19,8 @@ class HttpClient {
         if (response.status === 401) {
           await authService.logout();
         }
-        throw new Error('Request failed');
+        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(errorData.message || 'Request failed');
       }
 
       return await response.json();
@@ -39,7 +40,8 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        throw new Error('Request failed');
+        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(errorData.message || 'Request failed');
       }
 
       return await response.json();
@@ -59,7 +61,8 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        throw new Error('Request failed');
+        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(errorData.message || 'Request failed');
       }
 
       return await response.json();
@@ -78,7 +81,8 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        throw new Error('Request failed');
+        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(errorData.message || 'Request failed');
       }
 
       return true;

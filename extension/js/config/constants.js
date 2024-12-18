@@ -16,3 +16,8 @@ export const STORAGE_KEYS = {
   CURRENT_ACCOUNT: 'currentAccount',
   USER_DATA: 'userData'
 };
+
+export const UI_CONFIG = {
+  ERROR_TIMEOUT: 5000,  // 5 seconds
+  SUCCESS_TIMEOUT: 3000 // 3 seconds
+};

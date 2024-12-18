@@ -16,8 +16,9 @@ class SessionService {
         throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
       }
 
-      // Update session activity
-      const response = await httpClient.put(`/api/accounts/${accountId}/session`, {
+      // Create new session
+      const response = await httpClient.post('/api/sessions', {
+        account_id: accountId,
         domain: domain,
         active: true
       });
@@ -36,9 +37,10 @@ class SessionService {
 
   async updateSession(accountId, domain) {
     try {
-      const response = await httpClient.put(`/api/accounts/${accountId}/session`, {
+      const response = await httpClient.put(`/api/sessions/${accountId}`, {
         domain: domain,
-        active: true
+        active: true,
+        last_activity: new Date().toISOString()
       });
 
       if (response.success) {
@@ -55,8 +57,9 @@ class SessionService {
 
   async endSession(accountId, domain) {
     try {
-      const response = await httpClient.put(`/api/accounts/${accountId}/session`, {
-        active: false
+      const response = await httpClient.put(`/api/sessions/${accountId}`, {
+        active: false,
+        end_time: new Date().toISOString()
       });
       
       if (response.success) {
