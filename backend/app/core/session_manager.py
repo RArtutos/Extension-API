@@ -1,4 +1,3 @@
-```python
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from .config import settings
@@ -33,9 +32,21 @@ class SessionManager:
             return session_id
         return None
 
-    def update_session(self, session_id: str, activity_data: Dict) -> bool:
-        """Actualizar actividad de sesión"""
-        return self.db.update_session_activity(session_id, activity_data)
+    def update_session(self, account_id: int, session_data: Dict) -> bool:
+        """Update session status for an account"""
+        try:
+            # Get current session info
+            active_sessions = self.get_active_sessions(account_id)
+            max_users = self.get_max_concurrent_users(account_id)
+
+            if active_sessions >= max_users and session_data.get('active', True):
+                return False
+
+            # Update session
+            return self.db.update_session_activity(account_id, session_data)
+        except Exception as e:
+            print(f"Error in session manager: {str(e)}")
+            return False
 
     def get_user_sessions(self, user_id: str) -> List[Dict]:
         """Obtener sesiones activas del usuario"""
@@ -53,4 +64,31 @@ class SessionManager:
     def end_session(self, session_id: str) -> bool:
         """Finalizar una sesión"""
         return self.db.remove_session(session_id)
-```
+
+
+    def get_active_sessions(self, account_id: int) -> int:
+        """Get number of active sessions for an account"""
+        try:
+            sessions = self.db.sessions.get_active_sessions(account_id)
+            return len(sessions)
+        except Exception:
+            return 0
+
+
+    def get_max_concurrent_users(self, account_id: int) -> int:
+        """Get maximum concurrent users allowed for an account"""
+        try:
+            account = self.db.get_account(account_id)
+            return account.get('max_concurrent_users', 1)
+        except Exception:
+            return 1
+
+    def get_session_info(self, account_id: int) -> Dict:
+        """Get session information for an account"""
+        active_sessions = self.get_active_sessions(account_id)
+        max_users = self.get_max_concurrent_users(account_id)
+        
+        return {
+            'active_sessions': active_sessions,
+            'max_concurrent_users': max_users
+        }
