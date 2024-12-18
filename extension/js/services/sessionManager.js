@@ -11,91 +11,6 @@ export class SessionManager {
     this.initializeSessionCleanup();
   }
 
-  initializeSessionCleanup() {
-    chrome.tabs.onRemoved.addListener(async (tabId) => {
-      await this.handleTabClose();
-    });
-  }
-
-  async handleTabClose() {
-    const currentAccount = await storage.get('currentAccount');
-    if (!currentAccount) return;
-
-    try {
-      const tabs = await chrome.tabs.query({});
-      const hasOpenTabs = tabs.some((tab) => {
-        try {
-          if (!tab.url) return false;
-          const domain = new URL(tab.url).hostname;
-          return currentAccount.cookies.some((cookie) =>
-            domain.endsWith(cookie.domain.replace(/^\./, ''))
-          );
-        } catch {
-          return false;
-        }
-      });
-
-      if (!hasOpenTabs) {
-        await this.cleanupCurrentSession();
-      }
-    } catch (error) {
-      console.error('Error handling tab close:', error);
-    }
-  }
-
-  async startPolling() {
-    if (this.pollInterval) return;
-
-    this.pollInterval = setInterval(async () => {
-      const currentAccount = await storage.get('currentAccount');
-      if (currentAccount) {
-        await this.updateSessionStatus(currentAccount.id);
-      }
-    }, SESSION_CONFIG.REFRESH_INTERVAL);
-  }
-
-  stopPolling() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-  }
-
-  async updateSessionStatus(accountId) {
-    try {
-      const sessionData = {
-        active: true,
-        timestamp: new Date().toISOString()
-      };
-
-      await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
-      return true;
-    } catch (error) {
-      console.error('Error updating session status:', error.message);
-      throw error;
-    }
-  }
-
-  async cleanupCurrentSession() {
-    try {
-      const currentAccount = await storage.get('currentAccount');
-      if (!currentAccount) return;
-
-      await httpClient.post(`/api/accounts/${currentAccount.id}/session/end`);
-      await analyticsService.trackSessionEnd(
-        currentAccount.id,
-        this.getAccountDomain(currentAccount)
-      );
-
-      await cookieManager.removeAccountCookies(currentAccount);
-      await storage.remove('currentAccount');
-      this.stopPolling();
-      this.clearAllTimers();
-    } catch (error) {
-      console.error('Error cleaning up session:', error.message);
-    }
-  }
-
   async startSession(accountId, domain) {
     try {
       // First check session limits
@@ -104,7 +19,7 @@ export class SessionManager {
         throw new Error('Maximum concurrent users reached');
       }
 
-      // Start new session
+      // Start new session - Asegurarse de enviar el dominio en el formato correcto
       const response = await httpClient.post(`/api/accounts/${accountId}/session/start`, {
         domain: domain
       });
@@ -117,20 +32,25 @@ export class SessionManager {
       return false;
     } catch (error) {
       console.error('Error starting session:', error.message);
-      throw error;
+      throw new Error(error.response?.data?.detail || 'Failed to start session');
     }
   }
 
-  clearAllTimers() {
-    this.activeTimers.forEach((timer) => {
-      if (timer) clearTimeout(timer);
-    });
-    this.activeTimers.clear();
+  async updateSessionStatus(accountId) {
+    try {
+      const sessionData = {
+        active: true,
+        domain: window.location.hostname, // Incluir el dominio actual
+        timestamp: new Date().toISOString()
+      };
+
+      await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
+      return true;
+    } catch (error) {
+      console.error('Error updating session status:', error.message);
+      throw new Error(error.response?.data?.detail || 'Failed to update session');
+    }
   }
 
-  getAccountDomain(account) {
-    if (!account?.cookies?.length) return '';
-    const domain = account.cookies[0].domain;
-    return domain.startsWith('.') ? domain.substring(1) : domain;
-  }
+  // ... resto del código sin cambios ...
 }

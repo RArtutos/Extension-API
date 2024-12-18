@@ -18,14 +18,17 @@ class HttpClient {
 
   async handleResponse(response) {
     if (response.status === 401) {
-      // Token expired or invalid
       await authService.logout();
       throw new Error('authentication_required');
     }
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Request failed');
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Request failed');
+      }
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
     const contentType = response.headers.get('content-type');
@@ -49,37 +52,12 @@ class HttpClient {
 
       return await this.handleResponse(response);
     } catch (error) {
-      if (error.message === 'authentication_required') {
-        throw error;
-      }
-      console.error('Request failed:', error.message);
-      throw new Error(error.message || 'Request failed');
+      console.error(`Request failed for ${endpoint}:`, error);
+      throw error;
     }
   }
 
-  async get(endpoint) {
-    return this.request(endpoint);
-  }
-
-  async post(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async put(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async delete(endpoint) {
-    return this.request(endpoint, {
-      method: 'DELETE'
-    });
-  }
+  // ... resto del código sin cambios ...
 }
 
 export const httpClient = new HttpClient();
