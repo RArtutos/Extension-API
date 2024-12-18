@@ -1,45 +1,19 @@
-import { httpClient } from '../../utils/httpClient.js';
+import { httpClient } from '../../utils/http/HttpClient.js';
 
 export class SessionAPI {
+  async getSessionInfo(accountId) {
+    return await httpClient.get(`/api/accounts/${accountId}/session`);
+  }
+
   async startSession(accountId, domain) {
-    try {
-      return await httpClient.post(`/api/accounts/${accountId}/session/start`, { domain });
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    return await httpClient.post(`/api/accounts/${accountId}/session/start`, { domain });
+  }
+
+  async updateSession(accountId, sessionData) {
+    return await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
   }
 
   async endSession(accountId) {
-    try {
-      return await httpClient.post(`/api/accounts/${accountId}/session/end`);
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  async updateSessionStatus(accountId) {
-    try {
-      return await httpClient.put(`/api/accounts/${accountId}/session`, {
-        active: true,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  async getSessionInfo(accountId) {
-    try {
-      return await httpClient.get(`/api/accounts/${accountId}/session`);
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  private handleError(error) {
-    if (error.response?.data?.detail) {
-      return new Error(error.response.data.detail);
-    }
-    return error;
+    return await httpClient.post(`/api/accounts/${accountId}/session/end`);
   }
 }

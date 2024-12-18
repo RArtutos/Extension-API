@@ -71,7 +71,7 @@ export class SessionManager {
       await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
       return true;
     } catch (error) {
-      console.error('Error updating session status:', error);
+      console.error('Error updating session status:', error.message);
       throw error;
     }
   }
@@ -92,7 +92,7 @@ export class SessionManager {
       this.stopPolling();
       this.clearAllTimers();
     } catch (error) {
-      console.error('Error cleaning up session:', error);
+      console.error('Error cleaning up session:', error.message);
     }
   }
 
@@ -116,10 +116,7 @@ export class SessionManager {
       }
       return false;
     } catch (error) {
-      if (error.response?.data?.detail) {
-        throw new Error(error.response.data.detail);
-      }
-      console.error('Error starting session:', error);
+      console.error('Error starting session:', error.message);
       throw error;
     }
   }

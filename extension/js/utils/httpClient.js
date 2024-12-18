@@ -24,11 +24,16 @@ class HttpClient {
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
+      const error = await response.json();
       throw new Error(error.detail || 'Request failed');
     }
 
-    return response.json().catch(() => ({}));
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    
+    return { success: true };
   }
 
   async request(endpoint, options = {}) {
@@ -45,11 +50,10 @@ class HttpClient {
       return await this.handleResponse(response);
     } catch (error) {
       if (error.message === 'authentication_required') {
-        // Let the caller handle authentication errors
         throw error;
       }
-      console.error('Request failed:', error);
-      throw error;
+      console.error('Request failed:', error.message);
+      throw new Error(error.message || 'Request failed');
     }
   }
 

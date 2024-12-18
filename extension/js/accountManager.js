@@ -38,7 +38,7 @@ class AccountManager {
       await sessionManager.updateSessionStatus(currentAccount.id);
       await analyticsService.trackPageView(domain);
     } catch (error) {
-      console.error('Error handling tab activity:', error);
+      console.error('Error handling tab activity:', error.message);
       if (error.message.includes('Session limit reached')) {
         await sessionManager.cleanupCurrentSession();
         ui.showError('Session expired: maximum concurrent users reached');
@@ -81,7 +81,7 @@ class AccountManager {
       ui.updateAccountsList(accounts, account);
 
     } catch (error) {
-      console.error('Error switching account:', error);
+      console.error('Error switching account:', error.message);
       ui.showError(error.message || 'Error switching account');
       throw error;
     }
