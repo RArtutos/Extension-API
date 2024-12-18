@@ -1,56 +1,81 @@
-import { SESSION_CONFIG } from '../config/constants.js';
 import { storage } from '../utils/storage.js';
 import { httpClient } from '../utils/httpClient.js';
 import { cookieManager } from '../utils/cookie/cookieManager.js';
 import { analyticsService } from './analyticsService.js';
+import { SessionPoller } from './session/session-poller.js';
+import { TabMonitor } from './session/tab-monitor.js';
+import { getAccountDomain } from './session/domain-utils.js';
 
 export class SessionManager {
   constructor() {
     this.activeTimers = new Map();
-    this.pollInterval = null;
-    this.initializeSessionCleanup();
+    this.poller = new SessionPoller(() => this.updateCurrentSession());
+    this.tabMonitor = new TabMonitor(() => this.cleanupCurrentSession());
   }
 
   async startSession(accountId, domain) {
     try {
-      // First check session limits
       const sessionInfo = await httpClient.get(`/api/accounts/${accountId}/session`);
       if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
         throw new Error('Maximum concurrent users reached');
       }
 
-      // Start new session - Asegurarse de enviar el dominio en el formato correcto
       const response = await httpClient.post(`/api/accounts/${accountId}/session/start`, {
         domain: domain
       });
 
       if (response.success) {
         await analyticsService.trackSessionStart(accountId, domain);
-        this.startPolling();
+        this.poller.start();
         return true;
       }
       return false;
     } catch (error) {
-      console.error('Error starting session:', error.message);
-      throw new Error(error.response?.data?.detail || 'Failed to start session');
+      console.error('Error starting session:', error);
+      throw error;
     }
   }
 
-  async updateSessionStatus(accountId) {
+  async updateCurrentSession() {
     try {
-      const sessionData = {
-        active: true,
-        domain: window.location.hostname, // Incluir el dominio actual
-        timestamp: new Date().toISOString()
-      };
+      const currentAccount = await storage.get('currentAccount');
+      if (!currentAccount) return;
 
-      await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
-      return true;
+      const currentDomain = window.location.hostname;
+      await httpClient.put(`/api/accounts/${currentAccount.id}/session`, {
+        active: true,
+        domain: currentDomain,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
-      console.error('Error updating session status:', error.message);
-      throw new Error(error.response?.data?.detail || 'Failed to update session');
+      console.error('Error updating session:', error);
     }
   }
 
-  // ... resto del código sin cambios ...
+  async cleanupCurrentSession() {
+    try {
+      const currentAccount = await storage.get('currentAccount');
+      if (!currentAccount) return;
+
+      await httpClient.post(`/api/accounts/${currentAccount.id}/session/end`);
+      await analyticsService.trackSessionEnd(
+        currentAccount.id, 
+        getAccountDomain(currentAccount)
+      );
+      
+      await cookieManager.removeAccountCookies(currentAccount);
+      await storage.remove('currentAccount');
+      
+      this.poller.stop();
+      this.clearTimers();
+    } catch (error) {
+      console.error('Error cleaning up session:', error);
+      throw error;
+    }
+  }
+
+  clearTimers() {
+    this.activeTimers.forEach(timer => clearTimeout(timer));
+    this.activeTimers.clear();
+  }
 }
