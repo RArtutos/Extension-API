@@ -1,10 +1,9 @@
-import { API_URL, STORAGE_KEYS, UI_CONFIG } from './config.js';
+import { STORAGE_KEYS, UI_CONFIG } from './config/constants.js';
 import { storage } from './utils/storage.js';
 import { ui } from './utils/ui.js';
 import { accountManager } from './accountManager.js';
 import { cookieService } from './services/cookieService.js';
-import { authService } from './services/authService.js';
-import { httpClient } from './utils/httpClient.js';
+import { authService } from './services/auth/authService.js';
 
 class PopupManager {
   constructor() {
@@ -101,7 +100,7 @@ class PopupManager {
 
   async loadAccounts() {
     try {
-      const accounts = await httpClient.get('/api/accounts/');
+      const accounts = await accountManager.getAccounts();
       const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
       ui.updateAccountsList(accounts, currentAccount);
     } catch (error) {
