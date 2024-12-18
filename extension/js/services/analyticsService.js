@@ -1,81 +1,88 @@
-import { api } from '../utils/api.js';
+import { httpClient } from '../utils/httpClient.js';
 import { storage } from '../utils/storage.js';
-import { ANALYTICS_CONFIG } from '../config.js';
+import { ANALYTICS_CONFIG } from '../config/constants.js';
 
 class AnalyticsService {
-    constructor() {
-        this.pendingEvents = [];
-        this.initializeTracking();
+  constructor() {
+    this.pendingEvents = [];
+    this.timers = new Map();
+    this.initializeTracking();
+  }
+
+  async initializeTracking() {
+    setInterval(() => this.flushEvents(), ANALYTICS_CONFIG.TRACKING_INTERVAL);
+  }
+
+  resetTimer(domain) {
+    if (this.timers.has(domain)) {
+      clearTimeout(this.timers.get(domain));
     }
+    
+    const timer = setTimeout(() => {
+      this.trackPageView(domain);
+    }, ANALYTICS_CONFIG.TRACKING_INTERVAL);
+    
+    this.timers.set(domain, timer);
+  }
 
-    async initializeTracking() {
-        // Start periodic tracking
-        setInterval(() => this.flushEvents(), ANALYTICS_CONFIG.TRACKING_INTERVAL);
+  async trackEvent(eventData) {
+    this.pendingEvents.push({
+      ...eventData,
+      timestamp: new Date().toISOString()
+    });
+
+    if (this.pendingEvents.length >= ANALYTICS_CONFIG.BATCH_SIZE) {
+      await this.flushEvents();
     }
+  }
 
-    async trackEvent(eventData) {
-        this.pendingEvents.push({
-            ...eventData,
-            timestamp: new Date().toISOString()
-        });
+  async flushEvents() {
+    if (this.pendingEvents.length === 0) return;
 
-        if (this.pendingEvents.length >= ANALYTICS_CONFIG.BATCH_SIZE) {
-            await this.flushEvents();
-        }
+    try {
+      await httpClient.post('/api/analytics/events', {
+        events: this.pendingEvents
+      });
+      this.pendingEvents = [];
+    } catch (error) {
+      console.error('Error sending analytics:', error);
     }
+  }
 
-    async flushEvents() {
-        if (this.pendingEvents.length === 0) return;
+  async trackPageView(domain) {
+    await this.trackEvent({
+      type: 'pageview',
+      domain,
+      action: 'view'
+    });
+  }
 
-        const events = [...this.pendingEvents];
-        this.pendingEvents = [];
+  async trackAccountSwitch(fromAccount, toAccount) {
+    await this.trackEvent({
+      type: 'account_switch',
+      from: fromAccount?.id,
+      to: toAccount.id,
+      action: 'switch'
+    });
+  }
 
-        try {
-            const token = await storage.get('token');
-            if (!token) return;
+  async trackSessionStart(accountId, domain) {
+    await this.trackEvent({
+      type: 'session',
+      accountId,
+      domain,
+      action: 'start'
+    });
+  }
 
-            await api.post('/analytics/events', { events }, token);
-        } catch (error) {
-            console.error('Error sending analytics:', error);
-            // Requeue failed events
-            this.pendingEvents = [...events, ...this.pendingEvents];
-        }
-    }
-
-    async trackPageView(domain) {
-        await this.trackEvent({
-            type: 'pageview',
-            domain,
-            action: 'view'
-        });
-    }
-
-    async trackAccountSwitch(fromAccount, toAccount) {
-        await this.trackEvent({
-            type: 'account_switch',
-            from: fromAccount?.id,
-            to: toAccount.id,
-            action: 'switch'
-        });
-    }
-
-    async trackSessionStart(accountId, domain) {
-        await this.trackEvent({
-            type: 'session',
-            accountId,
-            domain,
-            action: 'start'
-        });
-    }
-
-    async trackSessionEnd(accountId, domain) {
-        await this.trackEvent({
-            type: 'session',
-            accountId,
-            domain,
-            action: 'end'
-        });
-    }
+  async trackSessionEnd(accountId, domain) {
+    await this.trackEvent({
+      type: 'session',
+      accountId,
+      domain,
+      action: 'end'
+    });
+  }
 }
 
 export const analyticsService = new AnalyticsService();

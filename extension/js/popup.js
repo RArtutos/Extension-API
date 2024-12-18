@@ -16,7 +16,14 @@ class PopupManager {
   }
 
   attachEventListeners() {
-    document.getElementById('login-btn')?.addEventListener('click', () => this.handleLogin());
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleLogin();
+      });
+    }
+    
     document.getElementById('logout-btn')?.addEventListener('click', () => this.handleLogout());
   }
 
@@ -43,6 +50,7 @@ class PopupManager {
       await this.loadAccounts();
       ui.showSuccess('Login successful');
     } catch (error) {
+      console.error('Login failed:', error);
       ui.showError('Login failed. Please check your credentials.');
     }
   }

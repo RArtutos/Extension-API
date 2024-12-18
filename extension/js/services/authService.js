@@ -10,7 +10,7 @@ class AuthService {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
+        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
       });
 
       if (!response.ok) {
