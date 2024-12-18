@@ -22,13 +22,7 @@ class AuthService {
         throw new Error('Invalid response from server');
       }
 
-      // Store token and user data
       await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
-      await storage.set(STORAGE_KEYS.USER_DATA, {
-        email,
-        is_admin: data.is_admin || false
-      });
-
       return data;
     } catch (error) {
       console.error('Login error:', error);
@@ -37,11 +31,7 @@ class AuthService {
   }
 
   async logout() {
-    await storage.remove([
-      STORAGE_KEYS.TOKEN,
-      STORAGE_KEYS.CURRENT_ACCOUNT,
-      STORAGE_KEYS.USER_DATA
-    ]);
+    await storage.remove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.CURRENT_ACCOUNT]);
   }
 
   async getToken() {

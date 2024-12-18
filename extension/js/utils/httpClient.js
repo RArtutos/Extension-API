@@ -1,50 +1,50 @@
 import { API_URL } from '../config/constants.js';
-import { storage } from './storage.js';
-import { STORAGE_KEYS } from '../config/constants.js';
-import { RequestBuilder } from './http/requestBuilder.js';
-import { ResponseHandler } from './http/responseHandler.js';
+import { authService } from '../services/authService.js';
 
 class HttpClient {
-  constructor() {
-    this.baseUrl = API_URL;
-  }
-
   async getHeaders() {
-    const token = await storage.get(STORAGE_KEYS.TOKEN);
-    return RequestBuilder.createHeaders(token);
+    const token = await authService.getToken();
+    return {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json'
+    };
   }
 
   async get(endpoint) {
     try {
       const headers = await this.getHeaders();
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        method: 'GET',
-        headers
-      });
+      const response = await fetch(`${API_URL}${endpoint}`, { headers });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          await authService.logout();
+        }
+        throw new Error(await this.handleErrorResponse(response));
+      }
 
-      return await ResponseHandler.handle(response);
+      return await response.json();
     } catch (error) {
-      console.error(`GET request failed for ${endpoint}:`, error);
+      console.error('GET request failed:', error);
       throw error;
     }
   }
 
-  async post(endpoint, data, options = {}) {
+  async post(endpoint, data) {
     try {
       const headers = await this.getHeaders();
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
-        headers: options.formData ? {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        } : headers,
-        body: options.formData ? 
-          RequestBuilder.createFormData(data) : 
-          JSON.stringify(data)
+        headers,
+        body: JSON.stringify(data)
       });
 
-      return await ResponseHandler.handle(response);
+      if (!response.ok) {
+        throw new Error(await this.handleErrorResponse(response));
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error(`POST request failed for ${endpoint}:`, error);
+      console.error('POST request failed:', error);
       throw error;
     }
   }
@@ -52,15 +52,19 @@ class HttpClient {
   async put(endpoint, data) {
     try {
       const headers = await this.getHeaders();
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(data)
       });
 
-      return await ResponseHandler.handle(response);
+      if (!response.ok) {
+        throw new Error(await this.handleErrorResponse(response));
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error(`PUT request failed for ${endpoint}:`, error);
+      console.error('PUT request failed:', error);
       throw error;
     }
   }
@@ -68,15 +72,28 @@ class HttpClient {
   async delete(endpoint) {
     try {
       const headers = await this.getHeaders();
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'DELETE',
         headers
       });
 
-      return await ResponseHandler.handle(response);
+      if (!response.ok) {
+        throw new Error(await this.handleErrorResponse(response));
+      }
+
+      return true;
     } catch (error) {
-      console.error(`DELETE request failed for ${endpoint}:`, error);
+      console.error('DELETE request failed:', error);
       throw error;
+    }
+  }
+
+  async handleErrorResponse(response) {
+    try {
+      const errorData = await response.json();
+      return errorData.message || 'Request failed';
+    } catch {
+      return 'Request failed';
     }
   }
 }

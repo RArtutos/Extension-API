@@ -28,23 +28,19 @@ class CookieService {
         });
       } catch (retryError) {
         console.error(`Failed to set cookie ${name} after retry:`, retryError);
-        throw retryError;
       }
     }
   }
 
   async removeAllCookies(domain) {
-    if (!domain) return;
-    
+    const cookies = await chrome.cookies.getAll({ domain });
     const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
-    const cookies = await chrome.cookies.getAll({ domain: cleanDomain });
     
     for (const cookie of cookies) {
       try {
         await chrome.cookies.remove({
-          url: `https://${cleanDomain}${cookie.path || '/'}`,
-          name: cookie.name,
-          storeId: cookie.storeId
+          url: `https://${cleanDomain}`,
+          name: cookie.name
         });
       } catch (error) {
         console.warn(`Error removing cookie ${cookie.name}:`, error);
@@ -53,8 +49,6 @@ class CookieService {
   }
 
   async processHeaderString(domain, cookieString) {
-    if (!cookieString) return;
-    
     const cookies = parseHeaderString(cookieString);
     for (const cookie of cookies) {
       await this.setCookie(domain, cookie.name, cookie.value);

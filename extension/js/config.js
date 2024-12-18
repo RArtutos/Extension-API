@@ -21,14 +21,6 @@ export const STORAGE_KEYS = {
   USER_DATA: 'userData'
 };
 
-// Cookie configuration
-export const COOKIE_DEFAULTS = {
-  path: '/',
-  secure: true,
-  sameSite: 'lax',
-  expirationDays: 30
-};
-
 // Analytics configuration
 export const ANALYTICS_CONFIG = {
   TRACKING_INTERVAL: 60000, // 1 minute

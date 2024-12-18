@@ -1,55 +1,64 @@
+import { SESSION_CONFIG } from '../config/constants.js';
 import { storage } from '../utils/storage.js';
 import { httpClient } from '../utils/httpClient.js';
 import { cookieManager } from '../utils/cookie/cookieManager.js';
 import { analyticsService } from './analyticsService.js';
-import { SessionPoller } from './session/session-poller.js';
-import { TabMonitor } from './session/tab-monitor.js';
-import { getAccountDomain } from './session/domain-utils.js';
 
 export class SessionManager {
   constructor() {
     this.activeTimers = new Map();
-    this.poller = new SessionPoller(() => this.updateCurrentSession());
-    this.tabMonitor = new TabMonitor(() => this.cleanupCurrentSession());
+    this.pollInterval = null;
+    this.initializeSessionCleanup();
   }
 
-  async startSession(accountId, domain) {
+  initializeSessionCleanup() {
+    // Solo limpiar al cerrar el navegador
+    chrome.runtime.onSuspend.addListener(() => {
+      this.cleanupCurrentSession();
+    });
+  }
+
+  async startPolling() {
+    if (this.pollInterval) return;
+    
+    this.pollInterval = setInterval(async () => {
+      const currentAccount = await storage.get('currentAccount');
+      if (currentAccount) {
+        await this.updateSessionStatus(currentAccount.id);
+      }
+    }, SESSION_CONFIG.REFRESH_INTERVAL);
+  }
+
+  stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  }
+
+  async updateSessionStatus(accountId) {
     try {
-      const sessionInfo = await httpClient.get(`/api/accounts/${accountId}/session`);
-      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-        throw new Error('Maximum concurrent users reached');
+      const response = await httpClient.get(`/api/accounts/${accountId}/session`);
+      const currentAccount = await storage.get('currentAccount');
+      
+      if (response.active_sessions >= response.max_concurrent_users && 
+          (!currentAccount || currentAccount.id !== accountId)) {
+        await this.cleanupCurrentSession();
+        throw new Error('Session limit reached');
       }
-
-      const response = await httpClient.post(`/api/accounts/${accountId}/session/start`, {
-        domain: domain
-      });
-
-      if (response.success) {
-        await analyticsService.trackSessionStart(accountId, domain);
-        this.poller.start();
-        return true;
-      }
-      return false;
+      
+      return response;
     } catch (error) {
-      console.error('Error starting session:', error);
+      console.error('Error updating session status:', error);
       throw error;
     }
   }
 
-  async updateCurrentSession() {
-    try {
-      const currentAccount = await storage.get('currentAccount');
-      if (!currentAccount) return;
-
-      const currentDomain = window.location.hostname;
-      await httpClient.put(`/api/accounts/${currentAccount.id}/session`, {
-        active: true,
-        domain: currentDomain,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error updating session:', error);
-    }
+  clearAllTimers() {
+    this.activeTimers.forEach(timer => {
+      if (timer) clearTimeout(timer);
+    });
+    this.activeTimers.clear();
   }
 
   async cleanupCurrentSession() {
@@ -57,25 +66,56 @@ export class SessionManager {
       const currentAccount = await storage.get('currentAccount');
       if (!currentAccount) return;
 
-      await httpClient.post(`/api/accounts/${currentAccount.id}/session/end`);
-      await analyticsService.trackSessionEnd(
-        currentAccount.id, 
-        getAccountDomain(currentAccount)
-      );
+      // Finalizar sesión en el backend
+      await this.endSession(currentAccount.id);
       
-      await cookieManager.removeAccountCookies(currentAccount);
+      // Limpiar storage
       await storage.remove('currentAccount');
       
-      this.poller.stop();
-      this.clearTimers();
+      // Detener polling
+      this.stopPolling();
+      
+      // Limpiar timers
+      this.clearAllTimers();
     } catch (error) {
       console.error('Error cleaning up session:', error);
+    }
+  }
+
+  async startSession(accountId, domain) {
+    try {
+      const sessionInfo = await this.updateSessionStatus(accountId);
+      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
+        throw new Error('Maximum concurrent users reached');
+      }
+
+      await analyticsService.trackSessionStart(accountId, domain);
+      this.startPolling();
+      return true;
+    } catch (error) {
+      console.error('Error starting session:', error);
       throw error;
     }
   }
 
-  clearTimers() {
-    this.activeTimers.forEach(timer => clearTimeout(timer));
-    this.activeTimers.clear();
+  async endSession(accountId) {
+    try {
+      const currentAccount = await storage.get('currentAccount');
+      if (currentAccount?.id === accountId) {
+        const domain = this.getAccountDomain(currentAccount);
+        await analyticsService.trackSessionEnd(accountId, domain);
+        this.stopPolling();
+      }
+      return true;
+    } catch (error) {
+      console.error('Error ending session:', error);
+      return false;
+    }
+  }
+
+  getAccountDomain(account) {
+    if (!account?.cookies?.length) return '';
+    const domain = account.cookies[0].domain;
+    return domain.startsWith('.') ? domain.substring(1) : domain;
   }
 }

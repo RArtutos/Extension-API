@@ -1,5 +1,5 @@
 import { accountService } from './services/accountService.js';
-import { sessionManager } from './services/sessionManagerInstance.js';
+import { sessionManager } from './services/sessionManagerInstance.js'; // Updated import path
 import { cookieManager } from './utils/cookie/cookieManager.js';
 import { analyticsService } from './services/analyticsService.js';
 import { ui } from './utils/ui.js';
@@ -28,6 +28,11 @@ class AccountManager {
         await this.handleTabActivity(domain);
       }
     });
+
+    // Monitor browser close
+    chrome.runtime.onSuspend.addListener(async () => {
+      await sessionManager.cleanupCurrentSession();
+    });
   }
 
   async handleTabActivity(domain) {
@@ -38,7 +43,7 @@ class AccountManager {
       await sessionManager.updateSessionStatus(currentAccount.id);
       await analyticsService.trackPageView(domain);
     } catch (error) {
-      console.error('Error handling tab activity:', error.message);
+      console.error('Error handling tab activity:', error);
       if (error.message.includes('Session limit reached')) {
         await sessionManager.cleanupCurrentSession();
         ui.showError('Session expired: maximum concurrent users reached');
@@ -52,10 +57,7 @@ class AccountManager {
       await sessionManager.cleanupCurrentSession();
 
       // Check session limits
-      const sessionInfo = await accountService.getSessionInfo(account.id);
-      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-        throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
-      }
+      await sessionManager.updateSessionStatus(account.id);
 
       // Set new cookies
       await cookieManager.setAccountCookies(account);
@@ -81,7 +83,7 @@ class AccountManager {
       ui.updateAccountsList(accounts, account);
 
     } catch (error) {
-      console.error('Error switching account:', error.message);
+      console.error('Error switching account:', error);
       ui.showError(error.message || 'Error switching account');
       throw error;
     }
