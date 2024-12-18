@@ -63,17 +63,9 @@ export class SessionManager {
 
   async updateSessionStatus(accountId) {
     try {
-      // First check session limits
-      const sessionInfo = await httpClient.get(`/api/accounts/${accountId}/session`);
-      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-        await this.cleanupCurrentSession();
-        throw new Error('Session limit reached');
-      }
-
-      // Update session
       const sessionData = {
         active: true,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       };
 
       await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
@@ -89,12 +81,7 @@ export class SessionManager {
       const currentAccount = await storage.get('currentAccount');
       if (!currentAccount) return;
 
-      const sessionData = {
-        active: false,
-        timestamp: new Date().toISOString(),
-      };
-
-      await httpClient.put(`/api/accounts/${currentAccount.id}/session`, sessionData);
+      await httpClient.post(`/api/accounts/${currentAccount.id}/session/end`);
       await analyticsService.trackSessionEnd(
         currentAccount.id,
         this.getAccountDomain(currentAccount)
@@ -111,21 +98,23 @@ export class SessionManager {
 
   async startSession(accountId, domain) {
     try {
+      // First check session limits
       const sessionInfo = await httpClient.get(`/api/accounts/${accountId}/session`);
       if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
         throw new Error('Maximum concurrent users reached');
       }
 
-      const sessionData = {
-        active: true,
-        domain,
-        timestamp: new Date().toISOString(),
-      };
+      // Start new session
+      const response = await httpClient.post(`/api/accounts/${accountId}/session/start`, {
+        domain: domain
+      });
 
-      await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
-      await analyticsService.trackSessionStart(accountId, domain);
-      this.startPolling();
-      return true;
+      if (response.success) {
+        await analyticsService.trackSessionStart(accountId, domain);
+        this.startPolling();
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Error starting session:', error);
       throw error;
