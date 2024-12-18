@@ -16,6 +16,7 @@ class Database:
         self.analytics = AnalyticsRepository()
         self.sessions = SessionRepository()
 
+    # Delegate methods to appropriate repositories
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         return self.users.get_by_email(email)
 
@@ -106,15 +107,3 @@ class Database:
 
     def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
         return self.user_accounts.remove_account(user_id, account_id)
-
-    def update_session_activity(self, account_id: int, session_data: Dict) -> bool:
-        """Update session activity status"""
-        try:
-            # Ensure the session data has required fields
-            session_data['last_activity'] = datetime.utcnow().isoformat()
-            session_data['account_id'] = account_id
-            
-            return self.sessions.update_session_activity(session_data)
-        except Exception as e:
-            print(f"Error updating session activity: {str(e)}")
-            return False

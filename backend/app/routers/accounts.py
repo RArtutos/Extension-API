@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Dict
+from typing import List
 from ..db.database import Database
 from ..schemas.account import Account, AccountCreate
 from ..core.auth import get_current_user
-from ..core.session_manager import SessionManager
+from ..core.config import settings
 
 router = APIRouter()
 db = Database()
-session_manager = SessionManager()
 
 @router.get("/", response_model=List[Account])
 async def get_accounts(current_user: dict = Depends(get_current_user)):
@@ -22,49 +21,34 @@ async def get_account(account_id: int, current_user: dict = Depends(get_current_
 
 @router.get("/{account_id}/session", response_model=dict)
 async def get_session_info(account_id: int, current_user: dict = Depends(get_current_user)):
-    """Get session information for an account"""
-    return session_manager.get_session_info(account_id)
-
-@router.put("/{account_id}/session")
-async def update_session(
-    account_id: int,
-    session_data: Dict,
-    current_user: dict = Depends(get_current_user)
-):
-    """Update session status for an account"""
-    # Add user_id to session data
-    session_data['user_id'] = current_user['email']
+    account = db.get_account(account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
     
-    if not session_manager.update_session(account_id, session_data):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to update session. Maximum concurrent users reached."
-        )
-    return {"success": True}
+    active_sessions = db.get_active_sessions(account_id)
+    max_users = account.get("max_concurrent_users", 1)
+    
+    return {
+        "active_sessions": len(active_sessions),
+        "max_concurrent_users": max_users
+    }
 
-@router.post("/{account_id}/session/start")
-async def start_session(
-    account_id: int,
-    domain: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Start a new session"""
-    if not session_manager.start_session(account_id, current_user['email'], domain):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to start session. Maximum concurrent users reached."
-        )
-    return {"success": True}
+@router.post("/", response_model=Account)
+async def create_account(account: AccountCreate, current_user: dict = Depends(get_current_user)):
+    if not current_user["is_admin"]:
+        raise HTTPException(status_code=403, detail="Not enough privileges")
+        
+    created_account = db.create_account(account.dict())
+    if created_account:
+        db.assign_account_to_user(current_user["email"], created_account["id"])
+    return created_account
 
-@router.post("/{account_id}/session/end")
-async def end_session(
-    account_id: int,
-    current_user: dict = Depends(get_current_user)
-):
-    """End a session"""
-    if not session_manager.end_session(account_id, current_user['email']):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to end session"
-        )
-    return {"success": True}
+@router.put("/{account_id}", response_model=Account)
+async def update_account(account_id: int, account: AccountCreate, current_user: dict = Depends(get_current_user)):
+    if not current_user["is_admin"]:
+        raise HTTPException(status_code=403, detail="Not enough privileges")
+        
+    updated_account = db.update_account(account_id, account.dict())
+    if not updated_account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return updated_account

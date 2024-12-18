@@ -1,3 +1,4 @@
+```python
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from .config import settings
@@ -7,72 +8,49 @@ class SessionManager:
     def __init__(self):
         self.db = Database()
 
-    def get_session_info(self, account_id: int) -> Dict:
-        """Get session information for an account"""
-        try:
-            active_sessions = self.db.get_active_sessions(account_id)
-            account = self.db.get_account(account_id)
-            max_users = account.get('max_concurrent_users', 1) if account else 1
-            
-            return {
-                'active_sessions': len(active_sessions),
-                'max_concurrent_users': max_users
-            }
-        except Exception as e:
-            print(f"Error getting session info: {str(e)}")
-            return {
-                'active_sessions': 0,
-                'max_concurrent_users': 1
-            }
+    async def create_session(self, user_id: str, device_info: Dict) -> Optional[str]:
+        """Crear nueva sesión si no se excede el límite de dispositivos"""
+        user = self.db.get_user_by_email(user_id)
+        if not user:
+            return None
 
-    def update_session(self, account_id: int, session_data: Dict) -> bool:
-        """Update session status for an account"""
-        try:
-            # Verificar límites de sesión
-            session_info = self.get_session_info(account_id)
-            if not session_data.get('active', True):
-                # Si estamos terminando la sesión, siempre permitir
-                return self.db.update_session_activity(account_id, session_data)
-                
-            if session_info['active_sessions'] >= session_info['max_concurrent_users']:
-                return False
+        active_sessions = self.db.get_active_sessions(user_id)
+        if len(active_sessions) >= user.get('max_devices', 1):
+            return None
 
-            # Actualizar la sesión
-            session_data['last_activity'] = datetime.utcnow().isoformat()
-            return self.db.update_session_activity(account_id, session_data)
-        except Exception as e:
-            print(f"Error updating session: {str(e)}")
+        session_id = f"{user_id}_{datetime.utcnow().timestamp()}"
+        session_data = {
+            "id": session_id,
+            "user_id": user_id,
+            "device_id": device_info.get("device_id"),
+            "ip_address": device_info.get("ip_address"),
+            "user_agent": device_info.get("user_agent"),
+            "created_at": datetime.utcnow(),
+            "last_activity": datetime.utcnow()
+        }
+
+        if self.db.create_session(session_data):
+            return session_id
+        return None
+
+    def update_session(self, session_id: str, activity_data: Dict) -> bool:
+        """Actualizar actividad de sesión"""
+        return self.db.update_session_activity(session_id, activity_data)
+
+    def get_user_sessions(self, user_id: str) -> List[Dict]:
+        """Obtener sesiones activas del usuario"""
+        return self.db.get_active_sessions(user_id)
+
+    def validate_session(self, session_id: str) -> bool:
+        """Validar si una sesión está activa y no ha expirado"""
+        session = self.db.get_session(session_id)
+        if not session:
             return False
 
-    def start_session(self, account_id: int, user_id: str, domain: str) -> bool:
-        """Start a new session"""
-        try:
-            session_info = self.get_session_info(account_id)
-            if session_info['active_sessions'] >= session_info['max_concurrent_users']:
-                return False
+        timeout = datetime.utcnow() - timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES)
+        return datetime.fromisoformat(session["last_activity"]) > timeout
 
-            session_data = {
-                'account_id': account_id,
-                'user_id': user_id,
-                'domain': domain,
-                'active': True,
-                'created_at': datetime.utcnow().isoformat(),
-                'last_activity': datetime.utcnow().isoformat()
-            }
-
-            return self.db.create_session(session_data)
-        except Exception as e:
-            print(f"Error starting session: {str(e)}")
-            return False
-
-    def end_session(self, account_id: int, user_id: str) -> bool:
-        """End a session"""
-        try:
-            session_data = {
-                'active': False,
-                'end_time': datetime.utcnow().isoformat()
-            }
-            return self.db.update_session_activity(account_id, session_data)
-        except Exception as e:
-            print(f"Error ending session: {str(e)}")
-            return False
+    def end_session(self, session_id: str) -> bool:
+        """Finalizar una sesión"""
+        return self.db.remove_session(session_id)
+```

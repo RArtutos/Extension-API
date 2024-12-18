@@ -36,27 +36,19 @@ class SessionRepository(BaseRepository):
         self._write_data(data)
         return True
 
-    def update_session_activity(self, session_data: Dict) -> bool:
+    def update_session_activity(self, session_id: str, activity_data: Dict) -> bool:
         """Update session activity"""
         data = self._read_data()
-        account_id = session_data.get("account_id")
-        
-        # Find existing session for this account
         session = next(
-            (s for s in data.get("sessions", []) 
-             if s.get("account_id") == account_id and s.get("active", True)),
+            (s for s in data.get("sessions", []) if s.get("id") == session_id),
             None
         )
         
         if session:
-            session.update({
-                "last_activity": datetime.utcnow().isoformat(),
-                "active": session_data.get("active", True),
-                "domain": session_data.get("domain")
-            })
+            session.update(activity_data)
+            session["last_activity"] = datetime.utcnow().isoformat()
             self._write_data(data)
             return True
-            
         return False
 
     def end_session(self, session_id: str) -> bool:
