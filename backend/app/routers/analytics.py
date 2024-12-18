@@ -27,3 +27,22 @@ async def get_account_analytics(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     return analytics_manager.get_account_analytics(account_id)
+
+@router.post("/events/batch")
+async def process_events_batch(events_data: dict):
+    """Process a batch of analytics events"""
+    user_id = events_data.get('user_id')
+    events = events_data.get('events', [])
+    
+    for event in events:
+        if event['type'] == 'pageview':
+            await analytics_manager.track_page_view(user_id, event['domain'])
+        elif event['type'] == 'account_switch':
+            await analytics_manager.track_account_switch(user_id, event['from'], event['to'])
+        elif event['type'] == 'session':
+            if event['action'] == 'start':
+                await analytics_manager.track_session_start(user_id, event['account_id'], event['domain'])
+            elif event['action'] == 'end':
+                await analytics_manager.track_session_end(user_id, event['account_id'], event['domain'])
+    
+    return {"success": True, "processed_events": len(events)}

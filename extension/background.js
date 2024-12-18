@@ -1,3 +1,4 @@
+// Import services
 import { analyticsService } from './js/services/analyticsService.js';
 
 // Track tab activity

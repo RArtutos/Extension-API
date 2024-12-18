@@ -1,7 +1,4 @@
-import { httpClient } from '../utils/httpClient.js';
-import { storage } from '../utils/storage.js';
-import { ANALYTICS_CONFIG } from '../config/constants.js';
-
+// Analytics service implementation
 class AnalyticsService {
   constructor() {
     this.pendingEvents = [];
@@ -10,7 +7,30 @@ class AnalyticsService {
   }
 
   async initializeTracking() {
-    setInterval(() => this.flushEvents(), ANALYTICS_CONFIG.TRACKING_INTERVAL);
+    // Flush events periodically
+    setInterval(() => this.sendPendingEvents(), ANALYTICS_CONFIG.TRACKING_INTERVAL);
+  }
+
+  async sendPendingEvents() {
+    if (this.pendingEvents.length === 0) return;
+
+    try {
+      const events = [...this.pendingEvents];
+      this.pendingEvents = [];
+
+      const userData = await storage.get('userData');
+      if (!userData?.email) return;
+
+      // Send events in batch
+      await httpClient.post(`/api/analytics/events/batch`, {
+        user_id: userData.email,
+        events: events
+      });
+    } catch (error) {
+      console.error('Error sending analytics events:', error);
+      // Re-add failed events back to the queue
+      this.pendingEvents.push(...events);
+    }
   }
 
   resetTimer(domain) {
@@ -35,9 +55,12 @@ class AnalyticsService {
       timestamp: new Date().toISOString()
     };
 
-    await httpClient.post(`/api/analytics/user/${userData.email}/events`, {
-      event: event
-    });
+    this.pendingEvents.push(event);
+
+    // If we have enough events, send them immediately
+    if (this.pendingEvents.length >= ANALYTICS_CONFIG.BATCH_SIZE) {
+      await this.sendPendingEvents();
+    }
   }
 
   async trackPageView(domain) {
@@ -76,4 +99,5 @@ class AnalyticsService {
   }
 }
 
+// Create and export a singleton instance
 export const analyticsService = new AnalyticsService();
