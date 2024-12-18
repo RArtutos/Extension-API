@@ -1,7 +1,12 @@
 import { API_URL } from '../config/constants.js';
 import { authService } from '../services/authService.js';
+import { ErrorHandler } from './errorHandler.js';
 
 class HttpClient {
+  constructor() {
+    this.errorHandler = new ErrorHandler();
+  }
+
   async getHeaders() {
     const token = await authService.getToken();
     return {
@@ -12,82 +17,58 @@ class HttpClient {
 
   async get(endpoint) {
     try {
-      const headers = await this.getHeaders();
-      const response = await fetch(`${API_URL}${endpoint}`, { headers });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          await authService.logout();
-        }
-        throw new Error(await this.handleErrorResponse(response));
-      }
-
-      return await response.json();
+      const response = await this.makeRequest(endpoint);
+      return await this.handleResponse(response);
     } catch (error) {
-      console.error('GET request failed:', error);
-      throw error;
-    }
-  }
-
-  async put(endpoint, data) {
-    try {
-      const headers = await this.getHeaders();
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(data)
-      });
-
-      if (!response.ok) {
-        throw new Error(await this.handleErrorResponse(response));
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      }
-      return { success: true };
-    } catch (error) {
-      console.error('PUT request failed:', error);
-      throw error;
+      throw this.errorHandler.handle(error);
     }
   }
 
   async post(endpoint, data) {
     try {
-      const headers = await this.getHeaders();
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await this.makeRequest(endpoint, {
         method: 'POST',
-        headers,
         body: JSON.stringify(data)
       });
-
-      if (!response.ok) {
-        throw new Error(await this.handleErrorResponse(response));
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      }
-      return { success: true };
+      return await this.handleResponse(response);
     } catch (error) {
-      console.error('POST request failed:', error);
-      throw error;
+      throw this.errorHandler.handle(error);
     }
   }
 
-  async handleErrorResponse(response) {
+  async put(endpoint, data) {
     try {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json();
-        return errorData.detail || errorData.message || 'Request failed';
-      }
-      return 'Request failed';
-    } catch {
-      return 'Request failed';
+      const response = await this.makeRequest(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      return await this.handleResponse(response);
+    } catch (error) {
+      throw this.errorHandler.handle(error);
     }
+  }
+
+  private async makeRequest(endpoint, options = {}) {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: { ...headers, ...options.headers }
+    });
+
+    if (!response.ok) {
+      const error = await this.errorHandler.parseErrorResponse(response);
+      throw error;
+    }
+
+    return response;
+  }
+
+  private async handleResponse(response) {
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      return await response.json();
+    }
+    return { success: true };
   }
 }
 

@@ -116,6 +116,9 @@ export class SessionManager {
       }
       return false;
     } catch (error) {
+      if (error.response?.data?.detail) {
+        throw new Error(error.response.data.detail);
+      }
       console.error('Error starting session:', error);
       throw error;
     }
