@@ -26,27 +26,18 @@ class AnalyticsService {
   }
 
   async trackEvent(eventData) {
-    this.pendingEvents.push({
+    const userData = await storage.get('userData');
+    if (!userData?.email) return;
+
+    const event = {
       ...eventData,
+      user_id: userData.email,
       timestamp: new Date().toISOString()
+    };
+
+    await httpClient.post(`/api/analytics/user/${userData.email}/events`, {
+      event: event
     });
-
-    if (this.pendingEvents.length >= ANALYTICS_CONFIG.BATCH_SIZE) {
-      await this.flushEvents();
-    }
-  }
-
-  async flushEvents() {
-    if (this.pendingEvents.length === 0) return;
-
-    try {
-      await httpClient.post('/api/analytics/events', {
-        events: this.pendingEvents
-      });
-      this.pendingEvents = [];
-    } catch (error) {
-      console.error('Error sending analytics:', error);
-    }
   }
 
   async trackPageView(domain) {
@@ -69,7 +60,7 @@ class AnalyticsService {
   async trackSessionStart(accountId, domain) {
     await this.trackEvent({
       type: 'session',
-      accountId,
+      account_id: accountId,
       domain,
       action: 'start'
     });
@@ -78,7 +69,7 @@ class AnalyticsService {
   async trackSessionEnd(accountId, domain) {
     await this.trackEvent({
       type: 'session',
-      accountId,
+      account_id: accountId,
       domain,
       action: 'end'
     });

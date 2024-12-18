@@ -19,8 +19,7 @@ class HttpClient {
         if (response.status === 401) {
           await authService.logout();
         }
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(errorData.message || 'Request failed');
+        throw new Error(await this.handleErrorResponse(response));
       }
 
       return await response.json();
@@ -40,8 +39,7 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(errorData.message || 'Request failed');
+        throw new Error(await this.handleErrorResponse(response));
       }
 
       return await response.json();
@@ -61,8 +59,7 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(errorData.message || 'Request failed');
+        throw new Error(await this.handleErrorResponse(response));
       }
 
       return await response.json();
@@ -81,14 +78,22 @@ class HttpClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(errorData.message || 'Request failed');
+        throw new Error(await this.handleErrorResponse(response));
       }
 
       return true;
     } catch (error) {
       console.error('DELETE request failed:', error);
       throw error;
+    }
+  }
+
+  async handleErrorResponse(response) {
+    try {
+      const errorData = await response.json();
+      return errorData.message || 'Request failed';
+    } catch {
+      return 'Request failed';
     }
   }
 }
