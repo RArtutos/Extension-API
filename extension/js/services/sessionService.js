@@ -16,19 +16,10 @@ class SessionService {
         throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
       }
 
-      // Update session status
-      const response = await httpClient.put(`/api/accounts/${accountId}/session`, {
-        domain: domain,
-        active: true,
-        last_activity: new Date().toISOString()
-      });
-
-      if (response.success) {
-        await analyticsService.trackSessionStart(accountId, domain);
-        this.startInactivityTimer(domain, accountId);
-      }
-
-      return response.success;
+      // Track session start
+      await analyticsService.trackSessionStart(accountId, domain);
+      this.startInactivityTimer(domain, accountId);
+      return true;
     } catch (error) {
       console.error('Error starting session:', error);
       throw error;
@@ -37,18 +28,14 @@ class SessionService {
 
   async updateSession(accountId, domain) {
     try {
-      const response = await httpClient.put(`/api/accounts/${accountId}/session`, {
-        domain: domain,
-        active: true,
-        last_activity: new Date().toISOString()
-      });
-
-      if (response.success) {
+      // Solo verificamos el estado de la sesión
+      const sessionInfo = await this.getSessionInfo(accountId);
+      if (sessionInfo.active_sessions <= sessionInfo.max_concurrent_users) {
         await analyticsService.trackPageView(domain);
         this.startInactivityTimer(domain, accountId);
+        return true;
       }
-
-      return response.success;
+      return false;
     } catch (error) {
       console.error('Error updating session:', error);
       return false;
@@ -57,16 +44,9 @@ class SessionService {
 
   async endSession(accountId, domain) {
     try {
-      const response = await httpClient.put(`/api/accounts/${accountId}/session`, {
-        active: false,
-        end_time: new Date().toISOString()
-      });
-      
-      if (response.success) {
-        await analyticsService.trackSessionEnd(accountId, domain);
-        this.clearInactivityTimer(domain);
-      }
-      return response.success;
+      await analyticsService.trackSessionEnd(accountId, domain);
+      this.clearInactivityTimer(domain);
+      return true;
     } catch (error) {
       console.error('Error ending session:', error);
       return false;

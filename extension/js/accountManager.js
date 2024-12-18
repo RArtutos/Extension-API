@@ -3,6 +3,7 @@ import { sessionService } from './services/sessionService.js';
 import { cookieManager } from './utils/cookieManager.js';
 import { analyticsService } from './services/analyticsService.js';
 import { ui } from './utils/ui.js';
+import { storage } from './utils/storage.js'; // Añadido import de storage
 
 class AccountManager {
   constructor() {
