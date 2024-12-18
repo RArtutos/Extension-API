@@ -12,10 +12,34 @@ export class SessionManager {
   }
 
   initializeSessionCleanup() {
-    // Solo limpiar al cerrar el navegador
-    chrome.runtime.onSuspend.addListener(() => {
-      this.cleanupCurrentSession();
+    chrome.tabs.onRemoved.addListener(async (tabId) => {
+      await this.handleTabClose();
     });
+  }
+
+  async handleTabClose() {
+    const currentAccount = await storage.get('currentAccount');
+    if (!currentAccount) return;
+
+    try {
+      const tabs = await chrome.tabs.query({});
+      const hasOpenTabs = tabs.some(tab => {
+        try {
+          if (!tab.url) return false;
+          const domain = new URL(tab.url).hostname;
+          return currentAccount.cookies.some(cookie => 
+            domain.endsWith(cookie.domain.replace(/^\./, '')));
+        } catch {
+          return false;
+        }
+      });
+
+      if (!hasOpenTabs) {
+        await this.cleanupCurrentSession();
+      }
+    } catch (error) {
+      console.error('Error handling tab close:', error);
+    }
   }
 
   async startPolling() {
@@ -38,18 +62,77 @@ export class SessionManager {
 
   async updateSessionStatus(accountId) {
     try {
+      const sessionData = {
+        active: true,
+        timestamp: new Date().toISOString()
+      };
+
       const response = await httpClient.get(`/api/accounts/${accountId}/session`);
-      const currentAccount = await storage.get('currentAccount');
       
-      if (response.active_sessions >= response.max_concurrent_users && 
-          (!currentAccount || currentAccount.id !== accountId)) {
+      if (response.active_sessions >= response.max_concurrent_users) {
         await this.cleanupCurrentSession();
         throw new Error('Session limit reached');
       }
-      
-      return response;
+
+      await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
+      return true;
     } catch (error) {
       console.error('Error updating session status:', error);
+      throw error;
+    }
+  }
+
+  async cleanupCurrentSession() {
+    try {
+      const currentAccount = await storage.get('currentAccount');
+      if (!currentAccount) return;
+
+      const sessionData = {
+        active: false,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        await httpClient.put(`/api/accounts/${currentAccount.id}/session`, sessionData);
+      } catch (error) {
+        console.error('Error ending session in backend:', error);
+      }
+      
+      await analyticsService.trackSessionEnd(
+        currentAccount.id, 
+        this.getAccountDomain(currentAccount)
+      );
+      
+      await cookieManager.removeAccountCookies(currentAccount);
+      await storage.remove('currentAccount');
+      this.stopPolling();
+      this.clearAllTimers();
+    } catch (error) {
+      console.error('Error cleaning up session:', error);
+    }
+  }
+
+  async startSession(accountId, domain) {
+    try {
+      const sessionInfo = await httpClient.get(`/api/accounts/${accountId}/session`);
+      
+      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
+        throw new Error('Maximum concurrent users reached');
+      }
+
+      const sessionData = {
+        active: true,
+        domain,
+        timestamp: new Date().toISOString()
+      };
+
+      await httpClient.put(`/api/accounts/${accountId}/session`, sessionData);
+      await analyticsService.trackSessionStart(accountId, domain);
+      this.startPolling();
+      
+      return true;
+    } catch (error) {
+      console.error('Error starting session:', error);
       throw error;
     }
   }
@@ -59,58 +142,6 @@ export class SessionManager {
       if (timer) clearTimeout(timer);
     });
     this.activeTimers.clear();
-  }
-
-  async cleanupCurrentSession() {
-    try {
-      const currentAccount = await storage.get('currentAccount');
-      if (!currentAccount) return;
-
-      // Finalizar sesión en el backend
-      await this.endSession(currentAccount.id);
-      
-      // Limpiar storage
-      await storage.remove('currentAccount');
-      
-      // Detener polling
-      this.stopPolling();
-      
-      // Limpiar timers
-      this.clearAllTimers();
-    } catch (error) {
-      console.error('Error cleaning up session:', error);
-    }
-  }
-
-  async startSession(accountId, domain) {
-    try {
-      const sessionInfo = await this.updateSessionStatus(accountId);
-      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
-        throw new Error('Maximum concurrent users reached');
-      }
-
-      await analyticsService.trackSessionStart(accountId, domain);
-      this.startPolling();
-      return true;
-    } catch (error) {
-      console.error('Error starting session:', error);
-      throw error;
-    }
-  }
-
-  async endSession(accountId) {
-    try {
-      const currentAccount = await storage.get('currentAccount');
-      if (currentAccount?.id === accountId) {
-        const domain = this.getAccountDomain(currentAccount);
-        await analyticsService.trackSessionEnd(accountId, domain);
-        this.stopPolling();
-      }
-      return true;
-    } catch (error) {
-      console.error('Error ending session:', error);
-      return false;
-    }
   }
 
   getAccountDomain(account) {

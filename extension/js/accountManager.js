@@ -1,5 +1,5 @@
 import { accountService } from './services/accountService.js';
-import { sessionManager } from './services/sessionManagerInstance.js'; // Updated import path
+import { sessionManager } from './services/sessionManagerInstance.js';
 import { cookieManager } from './utils/cookie/cookieManager.js';
 import { analyticsService } from './services/analyticsService.js';
 import { ui } from './utils/ui.js';
@@ -28,11 +28,6 @@ class AccountManager {
         await this.handleTabActivity(domain);
       }
     });
-
-    // Monitor browser close
-    chrome.runtime.onSuspend.addListener(async () => {
-      await sessionManager.cleanupCurrentSession();
-    });
   }
 
   async handleTabActivity(domain) {
@@ -57,7 +52,10 @@ class AccountManager {
       await sessionManager.cleanupCurrentSession();
 
       // Check session limits
-      await sessionManager.updateSessionStatus(account.id);
+      const sessionInfo = await accountService.getSessionInfo(account.id);
+      if (sessionInfo.active_sessions >= sessionInfo.max_concurrent_users) {
+        throw new Error(`Maximum concurrent users (${sessionInfo.max_concurrent_users}) reached`);
+      }
 
       // Set new cookies
       await cookieManager.setAccountCookies(account);

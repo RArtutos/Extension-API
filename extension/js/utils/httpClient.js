@@ -29,26 +29,6 @@ class HttpClient {
     }
   }
 
-  async post(endpoint, data) {
-    try {
-      const headers = await this.getHeaders();
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data)
-      });
-
-      if (!response.ok) {
-        throw new Error(await this.handleErrorResponse(response));
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('POST request failed:', error);
-      throw error;
-    }
-  }
-
   async put(endpoint, data) {
     try {
       const headers = await this.getHeaders();
@@ -62,36 +42,49 @@ class HttpClient {
         throw new Error(await this.handleErrorResponse(response));
       }
 
-      return await response.json();
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      return { success: true };
     } catch (error) {
       console.error('PUT request failed:', error);
       throw error;
     }
   }
 
-  async delete(endpoint) {
+  async post(endpoint, data) {
     try {
       const headers = await this.getHeaders();
       const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'DELETE',
-        headers
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data)
       });
 
       if (!response.ok) {
         throw new Error(await this.handleErrorResponse(response));
       }
 
-      return true;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      return { success: true };
     } catch (error) {
-      console.error('DELETE request failed:', error);
+      console.error('POST request failed:', error);
       throw error;
     }
   }
 
   async handleErrorResponse(response) {
     try {
-      const errorData = await response.json();
-      return errorData.message || 'Request failed';
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        return errorData.detail || errorData.message || 'Request failed';
+      }
+      return 'Request failed';
     } catch {
       return 'Request failed';
     }

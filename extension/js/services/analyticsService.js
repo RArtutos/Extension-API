@@ -2,7 +2,6 @@ import { ANALYTICS_CONFIG } from '../config/constants.js';
 import { storage } from '../utils/storage.js';
 import { httpClient } from '../utils/httpClient.js';
 
-// Analytics service implementation
 class AnalyticsService {
   constructor() {
     this.pendingEvents = [];
@@ -26,7 +25,7 @@ class AnalyticsService {
       if (!userData?.email) return;
 
       // Send events in batch
-      await httpClient.post(`/api/analytics/events/batch`, {
+      await httpClient.post('/api/analytics/events/batch', {
         user_id: userData.email,
         events: events
       });
@@ -35,18 +34,6 @@ class AnalyticsService {
       // Re-add failed events back to the queue
       this.pendingEvents.push(...events);
     }
-  }
-
-  resetTimer(domain) {
-    if (this.timers.has(domain)) {
-      clearTimeout(this.timers.get(domain));
-    }
-    
-    const timer = setTimeout(() => {
-      this.trackPageView(domain);
-    }, ANALYTICS_CONFIG.TRACKING_INTERVAL);
-    
-    this.timers.set(domain, timer);
   }
 
   async trackEvent(eventData) {
@@ -103,5 +90,4 @@ class AnalyticsService {
   }
 }
 
-// Create and export a singleton instance
 export const analyticsService = new AnalyticsService();
