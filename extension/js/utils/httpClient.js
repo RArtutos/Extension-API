@@ -1,35 +1,78 @@
+import { API_URL } from '../config/constants.js';
 import { storage } from './storage.js';
-import { HeadersManager } from './http/headers.js';
-import { RequestManager } from './http/request.js';
-import { ErrorHandler } from './http/error.js';
+import { STORAGE_KEYS } from '../config/constants.js';
+import { authService } from '../services/authService.js';
 
 class HttpClient {
   constructor() {
-    this.errorHandler = new ErrorHandler();
-    this.headersManager = new HeadersManager(() => storage.get('token'));
-    this.requestManager = new RequestManager(this.headersManager, this.errorHandler);
+    this.baseUrl = API_URL;
   }
 
-  get(endpoint) {
-    return this.requestManager.makeRequest(endpoint);
+  async getHeaders() {
+    const token = await storage.get(STORAGE_KEYS.TOKEN);
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : ''
+    };
   }
 
-  post(endpoint, data) {
-    return this.requestManager.makeRequest(endpoint, {
+  async handleResponse(response) {
+    if (response.status === 401) {
+      // Token expired or invalid
+      await authService.logout();
+      throw new Error('authentication_required');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Request failed');
+    }
+
+    return response.json().catch(() => ({}));
+  }
+
+  async request(endpoint, options = {}) {
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          ...headers,
+          ...options.headers
+        }
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      if (error.message === 'authentication_required') {
+        // Let the caller handle authentication errors
+        throw error;
+      }
+      console.error('Request failed:', error);
+      throw error;
+    }
+  }
+
+  async get(endpoint) {
+    return this.request(endpoint);
+  }
+
+  async post(endpoint, data) {
+    return this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(data)
     });
   }
 
-  put(endpoint, data) {
-    return this.requestManager.makeRequest(endpoint, {
+  async put(endpoint, data) {
+    return this.request(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
   }
 
-  delete(endpoint) {
-    return this.requestManager.makeRequest(endpoint, {
+  async delete(endpoint) {
+    return this.request(endpoint, {
       method: 'DELETE'
     });
   }

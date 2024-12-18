@@ -3,6 +3,8 @@ import { storage } from './utils/storage.js';
 import { ui } from './utils/ui.js';
 import { accountManager } from './accountManager.js';
 import { cookieService } from './services/cookieService.js';
+import { authService } from './services/authService.js';
+import { httpClient } from './utils/httpClient.js';
 
 class PopupManager {
   constructor() {
@@ -19,24 +21,25 @@ class PopupManager {
   }
 
   attachEventListeners() {
-    // Login form
     document.getElementById('login-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       await this.handleLogin();
     });
     
-    // Logout button
     document.getElementById('logout-btn')?.addEventListener('click', () => this.handleLogout());
-    
-    // Close button
     document.getElementById('close-btn')?.addEventListener('click', () => window.close());
   }
 
   async checkAuthState() {
-    const token = await storage.get(STORAGE_KEYS.TOKEN);
-    if (token) {
-      await this.showAccountManager();
-    } else {
+    try {
+      const isAuthenticated = await authService.isAuthenticated();
+      if (isAuthenticated) {
+        await this.showAccountManager();
+      } else {
+        ui.showLoginForm();
+      }
+    } catch (error) {
+      console.error('Error checking auth state:', error);
       ui.showLoginForm();
     }
   }
@@ -51,24 +54,7 @@ class PopupManager {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
-      }
-
-      const data = await response.json();
-      if (!data.access_token) {
-        throw new Error('Invalid response from server');
-      }
-
-      await storage.set(STORAGE_KEYS.TOKEN, data.access_token);
+      await authService.login(email, password);
       await this.showAccountManager();
       ui.showSuccess('Login successful');
     } catch (error) {
@@ -79,21 +65,13 @@ class PopupManager {
 
   async handleLogout() {
     try {
-      // Clear current account cookies
       const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
       if (currentAccount) {
         await cookieService.removeAllCookies(currentAccount.domain);
       }
 
-      // Clear storage
-      await storage.remove([
-        STORAGE_KEYS.TOKEN,
-        STORAGE_KEYS.CURRENT_ACCOUNT,
-        STORAGE_KEYS.PROXY_ENABLED,
-        STORAGE_KEYS.USER_SETTINGS
-      ]);
-
-      // Stop refresh interval
+      await authService.logout();
+      
       if (this.refreshInterval) {
         clearInterval(this.refreshInterval);
         this.refreshInterval = null;
@@ -112,7 +90,6 @@ class PopupManager {
       ui.showAccountManager();
       await this.loadAccounts();
       
-      // Start auto-refresh if enabled
       if (UI_CONFIG.REFRESH_INTERVAL) {
         this.refreshInterval = setInterval(() => this.loadAccounts(), UI_CONFIG.REFRESH_INTERVAL);
       }
@@ -124,28 +101,12 @@ class PopupManager {
 
   async loadAccounts() {
     try {
-      const token = await storage.get(STORAGE_KEYS.TOKEN);
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`${API_URL}/api/accounts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load accounts');
-      }
-
-      const accounts = await response.json();
+      const accounts = await httpClient.get('/api/accounts/');
       const currentAccount = await storage.get(STORAGE_KEYS.CURRENT_ACCOUNT);
-      
       ui.updateAccountsList(accounts, currentAccount);
     } catch (error) {
       console.error('Failed to load accounts:', error);
-      if (error.message.includes('authentication')) {
+      if (error.message === 'authentication_required') {
         await this.handleLogout();
       } else {
         ui.showError('Failed to load accounts. Please try again.');
