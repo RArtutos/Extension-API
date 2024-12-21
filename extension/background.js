@@ -1,112 +1,80 @@
 const cookieManager = {
   managedDomains: new Set(),
-  sessionCheckInterval: null,
   API_URL: 'https://api.artutos.us.kg',
 
   init() {
+    console.log('Inicializando cookieManager');
     this.loadManagedDomains();
     this.setupEventListeners();
-    this.startSessionCheck();
   },
 
   loadManagedDomains() {
+    console.log('Cargando dominios gestionados');
     chrome.storage.local.get(['managedDomains'], (result) => {
       if (result.managedDomains) {
         this.managedDomains = new Set(result.managedDomains);
       }
+      console.log('Dominios gestionados cargados:', this.managedDomains);
     });
   },
 
   setupEventListeners() {
-    // Escuchar cierre de pestañas
+    console.log('Configurando eventListeners');
     chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+      console.log('Pestaña cerrada:', tabId);
       await this.handleTabClose(tabId);
     });
 
-    // Limpiar al cerrar el navegador
     chrome.runtime.onSuspend.addListener(() => {
+      console.log('Navegador cerrado');
       this.cleanupAllCookies();
     });
 
-    // Escuchar cambios en el almacenamiento
+    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+      if (request.type === 'CLEANUP_COOKIES') {
+        await this.cleanupAllCookies();
+        sendResponse({ success: true });
+      }
+      if (request.type === 'SET_MANAGED_DOMAINS') {
+        const newDomains = request.domains || [];
+        newDomains.forEach(domain => this.managedDomains.add(domain));
+        await chrome.storage.local.set({
+          managedDomains: Array.from(this.managedDomains),
+        });
+        sendResponse({ success: true });
+      }
+      return true;
+    });
+
     chrome.storage.onChanged.addListener((changes, namespace) => {
+      console.log('Storage changed:', changes);
       if (changes.currentAccount) {
         this.handleAccountChange(changes.currentAccount.newValue, changes.currentAccount.oldValue);
+      }
+      if (changes.managedDomains) {
+        const existingDomains = Array.from(this.managedDomains);
+        const newDomains = changes.managedDomains.newValue || [];
+        this.managedDomains = new Set([...existingDomains, ...newDomains]);
       }
     });
   },
 
   async handleAccountChange(newAccount, oldAccount) {
-    if (oldAccount) {
-      await this.removeCookiesForAccount(oldAccount);
-    }
+    console.log('Cambio de cuenta:', { newAccount, oldAccount });
     if (newAccount) {
       await this.setAccountCookies(newAccount);
     }
   },
 
-  startSessionCheck() {
-    // Verificar el estado de la sesión cada 30 segundos
-    this.sessionCheckInterval = setInterval(async () => {
-      await this.checkSessionStatus();
-    }, 30000);
-  },
-
-  async checkSessionStatus() {
-    try {
-      const currentAccount = await this.getCurrentAccount();
-      if (!currentAccount) return;
-
-      const token = await this.getToken();
-      if (!token) return;
-
-      const response = await fetch(`${this.API_URL}/api/accounts/${currentAccount.id}/session`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        // Si hay un error 401 o la sesión no es válida, limpiar cookies
-        if (response.status === 401 || response.status === 403) {
-          await this.cleanupCurrentSession();
-        }
-        return;
-      }
-
-      const sessionData = await response.json();
-      if (!sessionData.active || sessionData.status === 'cancelled') {
-        await this.cleanupCurrentSession();
-      }
-    } catch (error) {
-      console.error('Error checking session status:', error);
-    }
-  },
-
-  async getCurrentAccount() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['currentAccount'], (result) => {
-        resolve(result.currentAccount);
-      });
-    });
-  },
-
-  async getToken() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['token'], (result) => {
-        resolve(result.token);
-      });
-    });
-  },
-
   async handleTabClose(tabId) {
     try {
       const tabs = await chrome.tabs.query({});
+      console.log('Pestañas abiertas:', tabs, 'Dominios gestionados:', this.managedDomains);
       
       for (const domain of this.managedDomains) {
         const cleanDomain = domain.replace(/^\./, '');
         
-        const hasOpenTabs = tabs.some(tab => {
+        const hasOpenTabsForDomain = tabs.some(tab => {
           try {
             if (!tab.url) return false;
             const tabDomain = new URL(tab.url).hostname;
@@ -116,7 +84,8 @@ const cookieManager = {
           }
         });
 
-        if (!hasOpenTabs) {
+        if (!hasOpenTabsForDomain) {
+          console.log('No hay pestañas abiertas para el dominio:', domain);
           await this.removeCookiesForDomain(domain);
         }
       }
@@ -125,19 +94,12 @@ const cookieManager = {
     }
   },
 
-  async removeCookiesForAccount(account) {
-    if (!account?.cookies?.length) return;
-    
-    for (const cookie of account.cookies) {
-      await this.removeCookiesForDomain(cookie.domain);
-    }
-  },
-
   async removeCookiesForDomain(domain) {
     const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
 
     try {
       const cookies = await chrome.cookies.getAll({ domain: cleanDomain });
+      console.log('Eliminando cookies para el dominio:', domain, cookies);
       
       for (const cookie of cookies) {
         const protocol = cookie.secure ? 'https://' : 'http://';
@@ -153,9 +115,41 @@ const cookieManager = {
           console.error(`Error removing cookie ${cookie.name}:`, error);
         }
       }
+
+      const token = await this.getToken();
+      const email = await this.getEmail();
+      
+      if (email && token) {
+        try {
+          const response = await fetch(
+            `${this.API_URL}/delete/sessions?email=${encodeURIComponent(email)}&domain=${encodeURIComponent(cleanDomain)}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!response.ok) {
+            console.error('Error en la solicitud DELETE:', response.status);
+          }
+        } catch (error) {
+          console.error('Error al enviar la solicitud DELETE:', error);
+        }
+      }
     } catch (error) {
       console.error(`Error removing cookies for domain ${domain}:`, error);
     }
+  },
+
+  async cleanupAllCookies() {
+    console.log('Limpiando todas las cookies...');
+    for (const domain of this.managedDomains) {
+      await this.removeCookiesForDomain(domain);
+    }
+    console.log('Limpieza de cookies completada');
   },
 
   async setAccountCookies(account) {
@@ -163,25 +157,65 @@ const cookieManager = {
 
     try {
       const domains = [];
+      let retryCount = 0;
+      const maxRetries = 3;
       
       for (const cookie of account.cookies) {
         const domain = cookie.domain;
         domains.push(domain);
-        
-        await this.removeCookiesForDomain(domain);
 
-        if (cookie.name === 'header_cookies') {
-          await this.setHeaderCookies(domain, cookie.value);
-        } else {
-          await this.setCookie(domain, cookie.name, cookie.value);
+        let cookiesSet = false;
+        while (!cookiesSet && retryCount < maxRetries) {
+          try {
+            if (cookie.name === 'header_cookies') {
+              await this.setHeaderCookies(domain, cookie.value);
+            } else {
+              await this.setCookie(domain, cookie.name, cookie.value);
+            }
+            cookiesSet = await this.verifyCookie(domain, cookie.name);
+          } catch (error) {
+            console.error(`Error setting cookie, attempt ${retryCount + 1}:`, error);
+          }
+          
+          if (!cookiesSet) {
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
         }
       }
 
-      this.managedDomains = new Set(domains);
-      await chrome.storage.local.set({ managedDomains: Array.from(this.managedDomains) });
+      domains.forEach(domain => this.managedDomains.add(domain));
+      await chrome.storage.local.set({ 
+        managedDomains: Array.from(this.managedDomains) 
+      });
+      
+      console.log('Cookies de cuenta establecidas:', account);
+      console.log('Dominios gestionados actualizados:', this.managedDomains);
     } catch (error) {
       console.error('Error setting account cookies:', error);
     }
+  },
+
+  async getToken() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['token'], (result) => {
+        resolve(result.token);
+      });
+    });
+  },
+
+  async getEmail() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['email'], (result) => {
+        resolve(result.email);
+      });
+    });
+  },
+
+  async verifyCookie(domain, name) {
+    const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+    const cookies = await chrome.cookies.getAll({ domain: cleanDomain, name });
+    return cookies.length > 0;
   },
 
   async setCookie(domain, name, value) {
@@ -212,6 +246,7 @@ const cookieManager = {
         });
       } catch (retryError) {
         console.error(`Failed to set cookie ${name} after retry:`, retryError);
+        throw retryError;
       }
     }
   },
@@ -239,50 +274,8 @@ const cookieManager = {
     }
     
     return cookies;
-  },
-
-  async cleanupCurrentSession() {
-    try {
-      const currentAccount = await this.getCurrentAccount();
-      if (currentAccount) {
-        await this.removeCookiesForAccount(currentAccount);
-      }
-      
-      await chrome.storage.local.remove(['currentAccount', 'managedDomains']);
-      this.managedDomains.clear();
-
-      // Notificar al popup que la sesión ha expirado
-      chrome.runtime.sendMessage({ type: 'SESSION_EXPIRED' });
-    } catch (error) {
-      console.error('Error during session cleanup:', error);
-    }
-  },
-
-  async cleanupAllCookies() {
-    try {
-      const domains = Array.from(this.managedDomains);
-      for (const domain of domains) {
-        await this.removeCookiesForDomain(domain);
-      }
-      await chrome.storage.local.remove(['managedDomains', 'currentAccount']);
-      this.managedDomains.clear();
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-    }
   }
 };
-
-// Manejador de mensajes
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'SET_MANAGED_DOMAINS') {
-    cookieManager.managedDomains = new Set(request.domains);
-    chrome.storage.local.set({
-      managedDomains: Array.from(cookieManager.managedDomains),
-    });
-    sendResponse({ success: true });
-    return true;
-  }
-});
 
 // Inicializar el gestor de cookies
 cookieManager.init();

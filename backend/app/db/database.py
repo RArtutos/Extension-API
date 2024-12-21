@@ -107,3 +107,9 @@ class Database:
 
     def remove_account_from_user(self, user_id: str, account_id: int) -> bool:
         return self.user_accounts.remove_account(user_id, account_id)
+        
+    def get_sessions_by_domain_and_email(self, domain: str, email: str) -> List[Dict]:
+        return self.sessions.get_sessions_by_domain_and_email(domain, email)
+    
+    def delete_session(self, session_id: str) -> bool:
+        return self.sessions.delete_session(session_id)

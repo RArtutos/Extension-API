@@ -7,6 +7,21 @@ class AnalyticsRepository(BaseRepository):
     def __init__(self):
         super().__init__(settings.DATA_FILE)
 
+    def create_activity(self, activity_data: Dict) -> Dict:
+        """Create a new activity record"""
+        data = self._read_data()
+        if "analytics" not in data:
+            data["analytics"] = []
+            
+        activity = {
+            "id": len(data["analytics"]) + 1,
+            **activity_data
+        }
+        
+        data["analytics"].append(activity)
+        self._write_data(data)
+        return activity
+
     def get_recent_activities(self, limit: int = 10, account_id: Optional[int] = None) -> List[Dict]:
         data = self._read_data()
         activities = data.get("analytics", [])
@@ -86,3 +101,60 @@ class AnalyticsRepository(BaseRepository):
     def get_user_total_time(self, user_id: str) -> int:
         sessions = self.get_user_sessions(user_id)
         return sum(s.get("duration", 0) for s in sessions)
+
+    def get_active_users_count(self, account_id: int) -> int:
+        """Get number of active users for an account"""
+        data = self._read_data()
+        active_users = set()
+        
+        for activity in data.get("analytics", []):
+            # Solo procesar actividades que tengan account_id y coincida con el solicitado
+            if (activity.get("account_id") == account_id and 
+                activity.get("action") == "account_access" and
+                not self._has_logout_after(activity, data["analytics"])):
+                active_users.add(activity.get("user_id"))
+                
+        return len(active_users)
+
+    def _has_logout_after(self, activity: Dict, activities: List[Dict]) -> bool:
+        """Check if user has logged out after this activity"""
+        if not activity.get("timestamp"):
+            return False
+            
+        activity_time = datetime.fromisoformat(activity["timestamp"])
+        user_id = activity.get("user_id")
+        
+        if not user_id:
+            return False
+        
+        for other in activities:
+            if (other.get("user_id") == user_id and 
+                other.get("action") == "account_logout" and
+                other.get("timestamp") and
+                datetime.fromisoformat(other["timestamp"]) > activity_time):
+                return True
+                
+        return False
+
+    def record_account_access(self, user_id: str, account_id: int, domain: str, 
+                            ip_address: Optional[str] = None, 
+                            user_agent: Optional[str] = None) -> Dict:
+        """Record account access activity"""
+        return self.create_activity({
+            "user_id": user_id,
+            "account_id": account_id,
+            "action": "account_access",
+            "domain": domain,
+            "timestamp": datetime.utcnow().isoformat(),
+            "ip_address": ip_address,
+            "user_agent": user_agent
+        })
+
+    def record_account_logout(self, user_id: str, account_id: int) -> Dict:
+        """Record account logout activity"""
+        return self.create_activity({
+            "user_id": user_id,
+            "account_id": account_id,
+            "action": "account_logout",
+            "timestamp": datetime.utcnow().isoformat()
+        })
