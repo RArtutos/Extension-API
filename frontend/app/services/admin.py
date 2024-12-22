@@ -8,7 +8,7 @@ class AdminService(BaseService):
 
     def get_users(self) -> List[Dict]:
         """Get all users"""
-        result = self._handle_request('get', f"{self.endpoint}/users")
+        result = self._handle_request('get', f"{self.endpoint}/users/")
         return result if result else []
 
     def get_user(self, user_id: str) -> Optional[Dict]:
@@ -18,7 +18,7 @@ class AdminService(BaseService):
 
     def create_user(self, user_data: Dict) -> Optional[Dict]:
         """Create a new user and assign preset accounts if specified"""
-        # Asegurarse de que preset_id sea un entero si existe
+        # Handle preset_id conversion
         if 'preset_id' in user_data:
             try:
                 user_data['preset_id'] = int(user_data['preset_id'])
@@ -27,20 +27,24 @@ class AdminService(BaseService):
             except (ValueError, TypeError):
                 del user_data['preset_id']
 
-        # Crear el usuario
-        created_user = self._handle_request('post', f"{self.endpoint}/users", user_data)
-        
-        # Si se creó el usuario y hay un preset_id válido, asignar las cuentas
-        if created_user and 'preset_id' in user_data and user_data['preset_id']:
-            try:
-                preset = self.get_preset(user_data['preset_id'])
-                if preset and preset.get('account_ids'):
-                    for account_id in preset['account_ids']:
-                        self.assign_account_to_user(created_user['email'], account_id)
-            except Exception as e:
-                print(f"Error assigning preset accounts: {str(e)}")
-                
+        # Create the user
+        created_user = self._handle_request('post', f"{self.endpoint}/users/", user_data)
         return created_user
+
+    def update_user(self, user_id: str, user_data: Dict) -> Optional[Dict]:
+        """Update an existing user"""
+        # Handle preset_id conversion
+        if 'preset_id' in user_data:
+            try:
+                user_data['preset_id'] = int(user_data['preset_id'])
+                if user_data['preset_id'] == 0:
+                    del user_data['preset_id']
+            except (ValueError, TypeError):
+                del user_data['preset_id']
+
+        # Update the user
+        updated_user = self._handle_request('put', f"{self.endpoint}/users/{user_id}", user_data)
+        return updated_user
 
     def delete_user(self, user_id: str) -> bool:
         """Delete a user"""
@@ -54,7 +58,7 @@ class AdminService(BaseService):
 
     def get_available_accounts(self) -> List[Dict]:
         """Get all available accounts"""
-        result = self._handle_request('get', f"{self.endpoint}/accounts")
+        result = self._handle_request('get', f"{self.endpoint}/accounts/")
         return result if result else []
 
     def assign_account_to_user(self, user_id: str, account_id: int) -> bool:
@@ -75,7 +79,7 @@ class AdminService(BaseService):
 
     def get_analytics(self) -> Dict:
         """Get analytics dashboard data"""
-        result = self._handle_request('get', f"{self.endpoint}/analytics")
+        result = self._handle_request('get', f"{self.endpoint}/analytics/")
         return result if result else {}
 
     def get_user_analytics(self, user_id: str) -> Dict:
@@ -90,7 +94,7 @@ class AdminService(BaseService):
 
     def get_presets(self) -> List[Dict]:
         """Get all presets"""
-        result = self._handle_request('get', f"{self.endpoint}/presets")
+        result = self._handle_request('get', f"{self.endpoint}/presets/")
         return result if result else []
 
     def get_preset(self, preset_id: int) -> Optional[Dict]:
@@ -100,7 +104,7 @@ class AdminService(BaseService):
 
     def create_preset(self, preset_data: Dict) -> Optional[Dict]:
         """Create a new preset"""
-        return self._handle_request('post', f"{self.endpoint}/presets", preset_data)
+        return self._handle_request('post', f"{self.endpoint}/presets/", preset_data)
 
     def update_preset(self, preset_id: int, preset_data: Dict) -> Optional[Dict]:
         """Update an existing preset"""
