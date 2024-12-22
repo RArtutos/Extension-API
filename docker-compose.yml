@@ -7,6 +7,7 @@ services:
       - "31000"
     volumes:
       - ./frontend:/app
+      - ./data:/app/data:rw  # Comparte el volumen de datos con backend
     environment:
       - API_URL=http://backend:8000
       - SECRET_KEY=dev-secret-key
@@ -20,26 +21,13 @@ services:
       - "8000"
     volumes:
       - ./backend:/app
-      - ./data:/app/data:rw
+      - ./data:/app/data:rw  # Comparte el volumen de datos con frontend
     environment:
       - SECRET_KEY=artutos123
       - ADMIN_EMAIL=admin@artutos.eu.org
       - ADMIN_PASSWORD=artutos123
       - DATA_FILE=/app/data/db.json
       - CORS_ORIGINS=https://admin.artutos.us.kg
-
-  backende:
-    build: ./backende
-    expose:
-      - "8001"
-    volumes:
-      - ./backende:/app
-      - ./data:/app/data:rw
-    environment:
-      - SECRET_KEY=artutos123
-      - DATA_FILE=/app/data/db.json
-      - CORS_ORIGINS=*
-    restart: always
 
   nginx:
     image: nginx:latest
@@ -52,4 +40,3 @@ services:
     depends_on:
       - frontend
       - backend
-      - backende
