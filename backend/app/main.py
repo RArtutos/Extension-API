@@ -1,3 +1,4 @@
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import auth, accounts, proxies, analytics, sessions, delete
@@ -109,6 +110,21 @@ async def capture_session_history():
             logging.error(f"Error capturing session history: {e}")
 
         await asyncio.sleep(60)  # Esperar 1 minuto
+
+@app.get("/api/history")
+async def get_history():
+    try:
+        # Verificar si el archivo de historial existe
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, 'r') as f:
+                history = json.load(f)
+            return JSONResponse(content=history)
+        else:
+            return JSONResponse(status_code=404, content={"message": "History file not found"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": f"Error retrieving history: {str(e)}"})
+
+
 
 async def cleanup_expired_and_deleted_users():
     while True:
