@@ -122,10 +122,16 @@
                                     </td>
                                     <td style="width: 30%;">
                                         <div class="progress">
+                                            {% if analytics.total_time != 0 %}
                                             <div class="progress-bar" role="progressbar" 
                                                  style="width: {{ (account.total_time / analytics.total_time * 100)|round(1) }}%">
                                                 {{ (account.total_time / analytics.total_time * 100)|round(1) }}%
                                             </div>
+                                            {% else %}
+                                            <div class="progress-bar" role="progressbar" style="width: 0%;">
+                                                0%
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
