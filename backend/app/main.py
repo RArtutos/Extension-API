@@ -11,6 +11,16 @@ import json
 import logging
 import os
 from pathlib import Path
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from .routers import auth, accounts, proxies, analytics, sessions, delete
+from .routers.admin import users, analytics as admin_analytics, presets, accounts as admin_accounts
+from .core.config import settings
+from .db.repositories.session_repository import SessionRepository
+from datetime import datetime
+import asyncio
+import json
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -166,6 +176,77 @@ async def cleanup_expired_and_deleted_users():
             logging.error(f"Error in cleanup_expired_and_deleted_users: {e}")
 
         await asyncio.sleep(120)  # Esperar 2 minutos
+
+@app.get("/json", response_class=HTMLResponse)
+async def edit_json():
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>JSON Editor</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+        <style>
+            #editor {
+                position: absolute;
+                width: 100%;
+                height: 90%;
+            }
+            #save {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <button id="save">Save</button>
+        <div id="editor"></div>
+        <script>
+            var editor = ace.edit("editor");
+            editor.setTheme("ace/theme/monokai");
+            editor.session.setMode("ace/mode/json");
+            
+            // Load JSON content
+            fetch('/json/content')
+                .then(response => response.text())
+                .then(data => editor.setValue(data, -1));
+            
+            // Save functionality
+            document.getElementById('save').onclick = function() {
+                fetch('/json/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: editor.getValue()
+                })
+                .then(response => {
+                    if(response.ok) alert('Saved successfully!');
+                    else alert('Error saving!');
+                });
+            };
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+@app.get("/json/content")
+async def get_json_content():
+    with open(settings.DATA_FILE, 'r') as f:
+        return HTMLResponse(content=f.read())
+
+@app.post("/json/save")
+async def save_json_content(request: Request):
+    try:
+        content = await request.body()
+        # Validate JSON
+        json.loads(content)
+        # Save if valid
+        with open(settings.DATA_FILE, 'wb') as f:
+            f.write(content)
+        return JSONResponse(content={"status": "success"})
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "message": str(e)})
 
 @app.on_event("startup")
 async def startup_event():
