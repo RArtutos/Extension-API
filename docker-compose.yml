@@ -11,7 +11,7 @@ services:
     environment:
       - API_URL=http://backend:8000
       - SECRET_KEY=dev-secret-key
-      - ALLOWED_HOSTS=admin.artutos.us.kg
+      - ALLOWED_HOSTS=admin.repelisplus.edu.eu.org
     depends_on:
       - backend
 
