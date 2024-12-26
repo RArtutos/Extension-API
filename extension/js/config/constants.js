@@ -1,4 +1,4 @@
-export const API_URL = 'https://api.artutos.us.kg';
+export const API_URL = 'https://api.repelisplus.edu.eu.org';
 
 export const SESSION_CONFIG = {
   INACTIVITY_TIMEOUT: 60000, // 1 minute
