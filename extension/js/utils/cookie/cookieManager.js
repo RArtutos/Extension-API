@@ -5,59 +5,6 @@ import { httpClient } from '../httpClient.js';
 class CookieManager {
   constructor() {
     this.managedDomains = new Set();
-    this.setupCleanupListeners();
-  }
-
-  setupCleanupListeners() {
-    // Limpiar cuando se cierra una pestaña
-    chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
-      await this.cleanupForClosedTab(tabId);
-    });
-
-    // Limpiar cuando se cierra el navegador
-    chrome.runtime.onSuspend.addListener(async () => {
-      await this.cleanupAllDomains();
-    });
-  }
-
-  async cleanupForClosedTab(tabId) {
-    try {
-      const tabs = await chrome.tabs.query({});
-      
-      // Para cada dominio manejado
-      for (const domain of this.managedDomains) {
-        const cleanDomain = domain.replace(/^\./, '');
-        
-        // Verificar si hay otras pestañas abiertas para este dominio
-        const hasOpenTabs = tabs.some(tab => {
-          try {
-            return tab.url && new URL(tab.url).hostname.endsWith(cleanDomain);
-          } catch {
-            return false;
-          }
-        });
-
-        // Si no hay más pestañas abiertas para este dominio, limpiar
-        if (!hasOpenTabs) {
-          await this.clearStorageForDomain(cleanDomain);
-          this.managedDomains.delete(domain);
-        }
-      }
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-    }
-  }
-
-  async cleanupAllDomains() {
-    try {
-      for (const domain of this.managedDomains) {
-        const cleanDomain = domain.replace(/^\./, '');
-        await this.clearStorageForDomain(cleanDomain);
-      }
-      this.managedDomains.clear();
-    } catch (error) {
-      console.error('Error during full cleanup:', error);
-    }
   }
 
   async setAccountCookies(account) {
@@ -72,21 +19,26 @@ class CookieManager {
       for (const cookie of account.cookies) {
         const domain = cookie.domain;
         domains.push(domain);
-        
-        if (cookie.value.startsWith('###')) {
-          const storageData = cookie.value.substring(3);
-          await this.setStorageData(domain, storageData);
+
+        try {
+          if (cookie.value.startsWith('###')) {
+            await this.setStorageData(domain, cookie.value.substring(3));
+          } else if (cookie.name === 'header_cookies') {
+            await this.setHeaderCookies(domain, cookie.value);
+          } else {
+            await this.setCookie(domain, cookie.name, cookie.value);
+          }
+        } catch (error) {
+          console.error(`Error setting cookie/storage:`, error);
+          continue;
         }
       }
 
-      // Actualizar dominios manejados
-      domains.forEach(domain => this.managedDomains.add(domain));
-      
-      chrome.runtime.sendMessage({
-        type: 'SET_MANAGED_DOMAINS',
-        domains: Array.from(this.managedDomains)
+      this.managedDomains = new Set(domains);
+      await chrome.storage.local.set({ 
+        managedDomains: Array.from(this.managedDomains) 
       });
-
+      
       return true;
     } catch (error) {
       console.error('Error setting account cookies:', error);
@@ -99,53 +51,167 @@ class CookieManager {
       const storageData = JSON.parse(storageDataStr);
       const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
 
-      // Crear pestaña temporal
-      const tab = await chrome.tabs.create({
-        url: `https://${cleanDomain}`,
-        active: false
-      });
-
-      // Esperar a que la página cargue
-      await new Promise(resolve => {
-        const listener = (tabId, info) => {
-          if (tabId === tab.id && info.status === 'complete') {
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
+      const injectStorage = async (tabId) => {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: function() {
+            window.__storageInjected = false;
+            window.__injectStorage = function(data) {
+              try {
+                if (data.local) {
+                  Object.keys(data.local).forEach(key => {
+                    localStorage.setItem(key, data.local[key]);
+                  });
+                }
+                if (data.session) {
+                  Object.keys(data.session).forEach(key => {
+                    sessionStorage.setItem(key, data.session[key]);
+                  });
+                }
+                window.__storageInjected = true;
+                return true;
+              } catch (e) {
+                console.error('Error injecting storage:', e);
+                return false;
+              }
+            };
           }
-        };
-        chrome.tabs.onUpdated.addListener(listener);
-      });
+        });
 
-      // Inyectar localStorage
-      const success = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (data) => {
-          try {
-            if (data.local) {
-              Object.keys(data.local).forEach(key => {
-                localStorage.setItem(key, data.local[key]);
-              });
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: function(storageData) {
+            return window.__injectStorage(storageData);
+          },
+          args: [storageData]
+        });
+
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => window.__storageInjected
+        });
+
+        return results[0]?.result === true;
+      };
+
+      const tabs = await chrome.tabs.query({
+        url: `*://*.${cleanDomain}/*`
+      });
+      
+      if (tabs.length > 0) {
+        for (const tab of tabs) {
+          const success = await injectStorage(tab.id);
+          if (!success) {
+            console.warn(`Failed to inject storage in tab ${tab.id}`);
+          }
+        }
+      } else {
+        const tab = await chrome.tabs.create({
+          url: `https://${cleanDomain}`,
+          active: false
+        });
+
+        await new Promise(resolve => {
+          const listener = (tabId, info) => {
+            if (tabId === tab.id && info.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
             }
-            return true;
-          } catch (e) {
-            console.error('Error injecting storage:', e);
-            return false;
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+        });
+
+        let success = false;
+        for (let i = 0; i < 3 && !success; i++) {
+          success = await injectStorage(tab.id);
+          if (!success) {
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
-        },
-        args: [storageData]
-      });
+        }
 
-      // Cerrar la pestaña temporal
-      await chrome.tabs.remove(tab.id);
+        await chrome.tabs.remove(tab.id);
 
-      if (!success) {
-        throw new Error('Failed to inject storage');
+        if (!success) {
+          throw new Error('Failed to inject storage after multiple attempts');
+        }
       }
 
     } catch (error) {
       console.error('Error setting storage data:', error);
       throw error;
     }
+  }
+
+  async setCookie(domain, name, value) {
+    const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+    const url = `https://${cleanDomain}`;
+    
+    try {
+      const cookieData = {
+        url,
+        name,
+        value,
+        path: '/',
+        secure: true
+      };
+
+      if (name.startsWith('__Host-')) {
+        cookieData.domain = undefined;
+        cookieData.secure = true;
+        cookieData.path = '/';
+      } else if (name.startsWith('__Secure-')) {
+        cookieData.secure = true;
+        cookieData.domain = domain;
+      } else {
+        cookieData.domain = domain;
+        cookieData.sameSite = 'lax';
+      }
+
+      await chrome.cookies.set(cookieData);
+    } catch (error) {
+      console.warn(`Error setting cookie ${name}, retrying with alternative settings:`, error);
+      
+      if (!name.startsWith('__Host-') && !name.startsWith('__Secure-')) {
+        try {
+          await chrome.cookies.set({
+            url,
+            name,
+            value,
+            domain: cleanDomain,
+            path: '/',
+            secure: false,
+            sameSite: 'no_restriction'
+          });
+        } catch (retryError) {
+          console.error(`Failed to set cookie ${name} after retry:`, retryError);
+        }
+      }
+    }
+  }
+
+  async setHeaderCookies(domain, cookieString) {
+    if (!cookieString) return;
+    
+    const cookies = this.parseHeaderString(cookieString);
+    for (const cookie of cookies) {
+      await this.setCookie(domain, cookie.name, cookie.value);
+    }
+  }
+
+  parseHeaderString(cookieString) {
+    if (!cookieString) return [];
+    
+    const cookies = [];
+    const pairs = cookieString.split(';');
+    
+    for (const pair of pairs) {
+      const [name, value] = pair.trim().split('=');
+      if (name && value) {
+        cookies.push({ name: name.trim(), value: value.trim() });
+      }
+    }
+    
+    return cookies;
   }
 
   async removeAccountCookies(account) {
@@ -155,9 +221,25 @@ class CookieManager {
       const domain = this.getDomain(account);
       await sessionService.endSession(account.id, domain);
       await this.clearStorageForDomain(domain);
-      this.managedDomains.delete(domain);
+      await this.removeAllCookiesForDomain(domain);
     } catch (error) {
       console.error('Error removing account cookies:', error);
+    }
+  }
+
+  async removeAllCookiesForDomain(domain) {
+    const cleanDomain = domain.startsWith('.') ? domain.substring(1) : domain;
+    const cookies = await chrome.cookies.getAll({ domain: cleanDomain });
+    
+    for (const cookie of cookies) {
+      try {
+        await chrome.cookies.remove({
+          url: `https://${cleanDomain}${cookie.path}`,
+          name: cookie.name
+        });
+      } catch (error) {
+        console.warn(`Error removing cookie ${cookie.name}:`, error);
+      }
     }
   }
 
@@ -166,12 +248,12 @@ class CookieManager {
       const tabs = await chrome.tabs.query({
         url: `*://*.${domain}/*`
       });
-      
       for (const tab of tabs) {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
             localStorage.clear();
+            sessionStorage.clear();
           }
         });
       }
