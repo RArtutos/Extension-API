@@ -88,7 +88,7 @@ class SessionRepository(BaseRepository):
         # Filter sessions by domain, email, and active status
         filtered_sessions = [
             session for session in sessions
-            if session.get("domain") == domain and
+            if domain in session.get("domain", "")
                session.get("user_id") == email and
                session.get("active", True)
         ]
